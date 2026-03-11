@@ -23,6 +23,7 @@ import { isEreader } from 'src/utils/isEreader';
 import { EreaderDrawShapeUtil } from '../ereader-draw-shape-util';
 import { SecondaryMenuBar } from '../secondary-menu-bar/secondary-menu-bar';
 import ModifyMenu from '../modify-menu/modify-menu';
+import { ScrollButtons } from '../scroll-buttons/scroll-buttons';
 
 ///////
 ///////
@@ -383,6 +384,7 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 					getTlEditor = {getTlEditor}
 					onStoreChange = {(tlEditor: Editor) => queueOrRunStorePostProcesses(tlEditor)}
 				/>
+				{props.embedded && <ScrollButtons />}
 			</SecondaryMenuBar>
 			
 		</div>
