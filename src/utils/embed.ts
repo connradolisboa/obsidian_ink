@@ -88,12 +88,16 @@ export const getViewMode = (el: HTMLElement): MarkdownViewModeType | null => {
 export function applyCommonAncestorStyling(embedEl: HTMLElement) {
 	const parentEmbedBlockEl = embedEl.closest('.cm-embed-block') as HTMLElement;
 	if(!parentEmbedBlockEl) return;
-	
+
 	parentEmbedBlockEl.classList.add('ddc_ink_embed-block');
-	
+
+	// When Readable Line Length is enabled, the scroller padding creates the reading column.
+	// Negating that padding would blow past the column to full viewport width, so skip it.
+	if(document.body.classList.contains('is-readable-line-width')) return;
+
 	const parentPageScrollerEl = embedEl.closest('.cm-scroller') as HTMLElement;
 	const scrollerStyle = window.getComputedStyle(parentPageScrollerEl);
-	
+
 	const scrollerInlineStartMargin = scrollerStyle.paddingInlineStart;
 	const scrollerInlineEndMargin = scrollerStyle.paddingInlineEnd;
 	const scrollerMarginLeft = scrollerStyle.paddingLeft;

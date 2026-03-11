@@ -9,8 +9,11 @@
 
 
 .cm-preview-code-block.cm-embed-block.markdown-rendered:has(.ddc_ink_drawing-embed) {
-    // Extend through page horizontal margin
-    margin: 0 calc(-1 * var(--file-margins)) !important;
+    // Extend through page horizontal margin, but only when Readable Line Length is off.
+    // When enabled (body.is-readable-line-width), the embed stays within the content column.
+    body:not(.is-readable-line-width) & {
+        margin: 0 calc(-1 * var(--file-margins)) !important;
+    }
 
     // Move further forward than line underneath so menu bars extending over the bottom edges are clickable
     z-index: 10;
@@ -73,6 +76,16 @@
 
 
 
+
+// When Readable Line Length is enabled, constrain drawing embeds to the content column.
+body.is-readable-line-width {
+    .cm-preview-code-block.cm-embed-block.markdown-rendered:has(.ddc_ink_drawing-embed),
+    .cm-preview-code-block.cm-embed-block.markdown-rendered:has(.ddc_ink_drawing-embed):hover {
+        margin-inline-start: 0 !important;
+        margin-inline-end: 0 !important;
+        max-width: 100% !important;
+    }
+}
 
 .ddc_ink_drawing-embed {
     box-sizing: content-box;

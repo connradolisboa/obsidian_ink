@@ -75,7 +75,7 @@
 // TODO: This is common to drawing and writing files. It should be moved to a common area.
 .markdown-source-view.mod-cm6 .cm-content > .cm-preview-code-block.cm-embed-block.markdown-rendered.ddc_ink_embed-block,
 .markdown-source-view.mod-cm6 .cm-content > .cm-preview-code-block.cm-embed-block.markdown-rendered.ddc_ink_embed-block:hover {
-    
+
     // Enables placing elements outside of the embed
     contain: unset !important;
     overflow: visible !important;
@@ -86,10 +86,22 @@
 
     // Prevent default obsidian code-block hover outline
     box-shadow: none;
-    
+
     // Prevent default Obsidian 'edit block' button appearing
     .edit-block-button {
         display: none;
+    }
+}
+
+// When Readable Line Length is enabled, constrain embeds to the content column.
+// This handles both the default theme (scroller padding) and themes like Minimal
+// (which constrain via .cm-sizer width). Reset any negative margins and cap width.
+body.is-readable-line-width {
+    .cm-preview-code-block.cm-embed-block.markdown-rendered.ddc_ink_embed-block,
+    .cm-preview-code-block.cm-embed-block.markdown-rendered.ddc_ink_embed-block:hover {
+        margin-inline-start: 0 !important;
+        margin-inline-end: 0 !important;
+        max-width: 100% !important;
     }
 }
 
