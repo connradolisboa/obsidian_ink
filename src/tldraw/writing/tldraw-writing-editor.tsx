@@ -1,5 +1,5 @@
 import './tldraw-writing-editor.scss';
-import { Box, DefaultDashStyle, Editor, HistoryEntry, StoreSnapshot, TLStoreSnapshot, TLRecord, TLShapeId, TLStore, TLUiOverrides, TLUnknownShape, Tldraw, getSnapshot, TLSerializedStore, TldrawOptions, TldrawEditor, defaultTools, defaultShapeTools, defaultShapeUtils, defaultBindingUtils, TldrawScribble, TldrawShapeIndicators, TldrawSelectionForeground, TldrawSelectionBackground, TldrawHandles, TLEditorSnapshot } from "@tldraw/tldraw";
+import { Box, DefaultDashStyle, DrawShapeUtil, Editor, HistoryEntry, StoreSnapshot, TLStoreSnapshot, TLRecord, TLShapeId, TLStore, TLUiOverrides, TLUnknownShape, Tldraw, getSnapshot, TLSerializedStore, TldrawOptions, TldrawEditor, defaultTools, defaultShapeTools, defaultShapeUtils, defaultBindingUtils, TldrawScribble, TldrawShapeIndicators, TldrawSelectionForeground, TldrawSelectionBackground, TldrawHandles, TLEditorSnapshot } from "@tldraw/tldraw";
 import { useRef } from "react";
 import { Activity, WritingCameraLimits, adaptTldrawToObsidianThemeMode, deleteObsoleteWritingTemplateShapes, focusChildTldrawEditor, getActivityType, getWritingContainerBounds, getWritingSvg, hideWritingContainer, hideWritingLines, hideWritingTemplate, initWritingCamera, initWritingCameraLimits, lockShape, prepareWritingSnapshot, preventTldrawCanvasesCausingObsidianGestures, resizeWritingTemplateInvitingly, restrictWritingCamera, silentlyChangeStore, unhideWritingContainer, unhideWritingLines, unhideWritingTemplate, unlockShape, updateWritingStoreIfNeeded, useStash } from "../../utils/tldraw-helpers";
 import { WritingContainer, WritingContainerUtil } from "../writing-shapes/writing-container"
@@ -20,6 +20,7 @@ import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { getInkFileData } from 'src/utils/getInkFileData';
 import { verbose } from 'src/utils/log-to-console';
 import { isEreader } from 'src/utils/isEreader';
+import { EreaderDrawShapeUtil } from '../ereader-draw-shape-util';
 import { SecondaryMenuBar } from '../secondary-menu-bar/secondary-menu-bar';
 import ModifyMenu from '../modify-menu/modify-menu';
 
@@ -51,13 +52,22 @@ export const TldrawWritingEditorWrapper: React.FC<TldrawWritingEditorProps> = (p
     }
 }
 
-const MyCustomShapes = [WritingContainerUtil, WritingLinesUtil];
 const myOverrides: TLUiOverrides = {}
 const tlOptions: Partial<TldrawOptions> = {
 	defaultSvgPadding: 0,
 }
 
+function getShapeUtils(useEreaderRenderer: boolean) {
+	const baseUtils = useEreaderRenderer
+		? [...defaultShapeUtils.filter(u => u !== DrawShapeUtil), EreaderDrawShapeUtil]
+		: [...defaultShapeUtils];
+	return [...baseUtils, WritingContainerUtil, WritingLinesUtil];
+}
+
 export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
+
+	const useEreaderRenderer = !props.plugin.settings.writingDynamicStrokeThickness || isEreader();
+	const shapeUtils = React.useMemo(() => getShapeUtils(useEreaderRenderer), [useEreaderRenderer]);
 
 	const [tlEditorSnapshot, setTlEditorSnapshot] = React.useState<TLEditorSnapshot>()
 	const setEmbedState = useSetAtom(embedStateAtom);
@@ -337,7 +347,7 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 		>
 			<TldrawEditor
 				options = {tlOptions}
-				shapeUtils = {[...defaultShapeUtils, ...MyCustomShapes]}
+				shapeUtils = {shapeUtils}
 				tools = {[...defaultTools, ...defaultShapeTools]}
 				initialState = "draw"
 				snapshot = {tlEditorSnapshot}

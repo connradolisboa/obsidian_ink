@@ -1,5 +1,5 @@
 import './tldraw-drawing-editor.scss';
-import { DefaultDashStyle, Editor, HistoryEntry, StoreSnapshot, TLRecord, TLStoreSnapshot, TLUiOverrides, Tldraw, TldrawEditor, TldrawHandles, TldrawOptions, TldrawScribble, TldrawSelectionBackground, TldrawSelectionForeground, TldrawShapeIndicators, defaultShapeTools, defaultShapeUtils, defaultTools, getSnapshot, TLSerializedStore, TLEditorSnapshot, TLUiActionsContextType } from "@tldraw/tldraw";
+import { DefaultDashStyle, DrawShapeUtil, Editor, HistoryEntry, StoreSnapshot, TLRecord, TLStoreSnapshot, TLUiOverrides, Tldraw, TldrawEditor, TldrawHandles, TldrawOptions, TldrawScribble, TldrawSelectionBackground, TldrawSelectionForeground, TldrawShapeIndicators, defaultShapeTools, defaultShapeUtils, defaultTools, getSnapshot, TLSerializedStore, TLEditorSnapshot, TLUiActionsContextType } from "@tldraw/tldraw";
 import { useRef } from "react";
 import { Activity, adaptTldrawToObsidianThemeMode, focusChildTldrawEditor, getActivityType, getDrawingSvg, initDrawingCamera, prepareDrawingSnapshot, preventTldrawCanvasesCausingObsidianGestures } from "../../utils/tldraw-helpers";
 import InkPlugin from "../../main";
@@ -21,6 +21,7 @@ import { getInkFileData } from 'src/utils/getInkFileData';
 import { ResizeHandle } from 'src/components/jsx-components/resize-handle/resize-handle';
 import { debug, verbose, warn } from 'src/utils/log-to-console';
 import { isEreader } from 'src/utils/isEreader';
+import { EreaderDrawShapeUtil } from '../ereader-draw-shape-util';
 import { SecondaryMenuBar } from '../secondary-menu-bar/secondary-menu-bar';
 import ModifyMenu from '../modify-menu/modify-menu';
 
@@ -58,7 +59,17 @@ const tlOptions: Partial<TldrawOptions> = {
 	defaultSvgPadding: 10, // Slight amount to prevent cropping overflows from stroke thickness
 }
 
+function getDrawingShapeUtils(useEreaderRenderer: boolean) {
+	if (useEreaderRenderer) {
+		return [...defaultShapeUtils.filter(u => u !== DrawShapeUtil), EreaderDrawShapeUtil];
+	}
+	return [...defaultShapeUtils];
+}
+
 export function TldrawDrawingEditor(props: TldrawDrawingEditorProps) {
+
+	const useEreaderRenderer = !props.plugin.settings.writingDynamicStrokeThickness || isEreader();
+	const shapeUtils = React.useMemo(() => getDrawingShapeUtils(useEreaderRenderer), [useEreaderRenderer]);
 
 	const [tlEditorSnapshot, setTlEditorSnapshot] = React.useState<TLEditorSnapshot>()
 	const setEmbedState = useSetAtom(embedStateAtom);
@@ -330,7 +341,7 @@ export function TldrawDrawingEditor(props: TldrawDrawingEditorProps) {
 		>
 			<TldrawEditor
 				options = {tlOptions}
-				shapeUtils = {[...defaultShapeUtils]}
+				shapeUtils = {shapeUtils}
 				tools = {[...defaultTools, ...defaultShapeTools]}
 				initialState = "draw"
 				overrides={myOverrides}
