@@ -17,6 +17,8 @@ import { atom, useAtom, useSetAtom } from "jotai";
 import { DRAWING_INITIAL_WIDTH, DRAWING_INITIAL_ASPECT_RATIO } from "src/constants";
 import { getFullPageWidth } from "src/utils/getFullPageWidth";
 import { verbose } from "src/utils/log-to-console";
+import { CollapseIcon } from "src/graphics/icons/collapse-icon";
+import { ExpandIcon } from "src/graphics/icons/expand-icon";
 const emptyDrawingSvgStr = require('../../placeholders/empty-drawing-embed.svg');
 
 ///////
@@ -67,6 +69,7 @@ export function DrawingEmbed (props: {
 	// const dispatch = useDispatch();
 
 	const setEmbedState = useSetAtom(embedStateAtom);
+	const [collapsed, setCollapsed] = useState(false);
 
 	// On first mount
 	React.useEffect( () => {
@@ -119,6 +122,7 @@ export function DrawingEmbed (props: {
 			className = {classNames([
 				'ddc_ink_embed',
 				'ddc_ink_drawing-embed',
+				collapsed && 'ddc_ink_collapsed',
 			])}
 			style = {{
 				// Must be padding as margin creates codemirror calculation issues
@@ -126,42 +130,59 @@ export function DrawingEmbed (props: {
 				paddingBottom: '0.5em',
 			}}
 		>
-			{/* Include another container so that it's height isn't affected by the padding of the outer container */}
-			<div
-				className = 'ddc_ink_resize-container'
-				ref = {resizeContainerElRef}
-				style = {{
-					width: embedWidthRef.current + 'px',
-					height: embedWidthRef.current / embedAspectRatioRef.current + 'px',
-					position: 'relative', // For absolute positioning inside
-					left: '50%',
-					translate: '-50%',
-				}}
-			>
-			
-				<DrawingEmbedPreviewWrapper
-					plugin = {props.plugin}
-					onReady = {() => {}}
-					drawingFile = {props.drawingFileRef}
-					onClick = { async () => {
-						// dispatch({ type: 'global-session/setActiveEmbedId', payload: embedId })
-						switchToEditMode();
-					}}
-				/>
-			
-				<TldrawDrawingEditorWrapper
-					onReady = {() => {}}
-					plugin = {props.plugin}
-					drawingFile = {props.drawingFileRef}
-					save = {props.saveSrcFile}
-					embedded
-					saveControlsReference = {registerEditorControls}
-					closeEditor = {saveAndSwitchToPreviewMode}
-					extendedMenu = {commonExtendedOptions}
-					resizeEmbed = {resizeEmbed}
-				/>
+			{collapsed && (
+				<div className="ddc_ink_collapsed-bar">
+					<span className="ddc_ink_collapsed-label">Drawing</span>
+					<button
+						className="ddc_ink_collapse-btn"
+						onPointerDown={() => setCollapsed(false)}
+						aria-label="Expand embed"
+					>
+						<ExpandIcon />
+					</button>
+				</div>
+			)}
 
-			</div>				
+			{!collapsed && <>
+				{/* Include another container so that it's height isn't affected by the padding of the outer container */}
+				<div
+					className = 'ddc_ink_resize-container'
+					ref = {resizeContainerElRef}
+					style = {{
+						width: embedWidthRef.current + 'px',
+						height: embedWidthRef.current / embedAspectRatioRef.current + 'px',
+						position: 'relative', // For absolute positioning inside
+						left: '50%',
+						translate: '-50%',
+					}}
+				>
+
+					<DrawingEmbedPreviewWrapper
+						plugin = {props.plugin}
+						onReady = {() => {}}
+						drawingFile = {props.drawingFileRef}
+						onCollapseClick = {() => setCollapsed(true)}
+						onClick = { async () => {
+							// dispatch({ type: 'global-session/setActiveEmbedId', payload: embedId })
+							switchToEditMode();
+						}}
+					/>
+
+					<TldrawDrawingEditorWrapper
+						onReady = {() => {}}
+						plugin = {props.plugin}
+						drawingFile = {props.drawingFileRef}
+						save = {props.saveSrcFile}
+						embedded
+						saveControlsReference = {registerEditorControls}
+						closeEditor = {saveAndSwitchToPreviewMode}
+						extendedMenu = {commonExtendedOptions}
+						resizeEmbed = {resizeEmbed}
+					/>
+
+				</div>
+			</>}
+
 		</div>
 	</>;
 

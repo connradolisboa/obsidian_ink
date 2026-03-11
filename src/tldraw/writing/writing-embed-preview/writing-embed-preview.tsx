@@ -9,6 +9,7 @@ import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { WritingEmbedState, embedStateAtom, previewActiveAtom } from '../writing-embed';
 import { TFile } from 'obsidian';
 import { getInkFileData } from 'src/utils/getInkFileData';
+import { CollapseIcon } from 'src/graphics/icons/collapse-icon';
 const emptyWritingSvg = require('../../../placeholders/empty-writing-embed.svg');
 
 //////////
@@ -19,6 +20,7 @@ interface WritingEmbedPreviewProps {
     onResize: Function,
     writingFile: TFile,
     onClick: React.MouseEventHandler,
+    onCollapseClick?: () => void,
 }
 
 // Wraps the component so that it can full unmount when inactive
@@ -93,6 +95,20 @@ const WritingEmbedPreview: React.FC<WritingEmbedPreviewProps> = (props) => {
                     onLoad={onLoad}
                 />
             </>)}
+
+            {props.onCollapseClick && (
+                <button
+                    className="ddc_ink_collapse-btn"
+                    onPointerDown={(e) => {
+                        e.stopPropagation();
+                        props.onCollapseClick?.();
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                    aria-label="Collapse embed"
+                >
+                    <CollapseIcon />
+                </button>
+            )}
 
         </div>
     </>;

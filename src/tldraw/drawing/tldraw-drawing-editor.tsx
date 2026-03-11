@@ -361,6 +361,7 @@ export function TldrawDrawingEditor(props: TldrawDrawingEditorProps) {
 				<DrawingMenu
 					getTlEditor = {getTlEditor}
 					onStoreChange = {(tlEditor: Editor) => queueOrRunStorePostProcesses(tlEditor)}
+					embedded = {props.embedded}
 				/>
 				{props.embedded && props.extendedMenu && (
 					<ExtendedDrawingMenu

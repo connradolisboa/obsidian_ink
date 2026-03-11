@@ -1,10 +1,16 @@
 import * as React from 'react';
 import './scroll-buttons.scss';
+import { Editor } from '@tldraw/tldraw';
+import { silentlyChangeStore } from 'src/utils/tldraw-helpers';
 
 ///////////
 ///////////
 
-export const ScrollButtons: React.FC = () => {
+interface ScrollButtonsProps {
+	getTlEditor?: () => Editor | undefined,
+}
+
+export const ScrollButtons: React.FC<ScrollButtonsProps> = (props) => {
 	const selfRef = React.useRef<HTMLDivElement>(null);
 
 	function getScrollContainer(): HTMLElement | null {
@@ -14,6 +20,22 @@ export const ScrollButtons: React.FC = () => {
 	function scrollUp(e: React.PointerEvent) {
 		e.preventDefault();
 		e.stopPropagation();
+
+		// Camera-based scrolling for full-screen mode
+		if (props.getTlEditor) {
+			const editor = props.getTlEditor();
+			if (editor) {
+				const viewport = editor.getViewportScreenBounds();
+				const scrollAmount = viewport.h * 0.6;
+				const camera = editor.getCamera();
+				silentlyChangeStore(editor, () => {
+					editor.setCamera({ x: camera.x, y: camera.y + scrollAmount, z: camera.z });
+				});
+				return;
+			}
+		}
+
+		// DOM-based scrolling for embed mode
 		const container = getScrollContainer();
 		if (container) {
 			container.scrollBy({ top: -(container.clientHeight * 0.8) });
@@ -23,6 +45,22 @@ export const ScrollButtons: React.FC = () => {
 	function scrollDown(e: React.PointerEvent) {
 		e.preventDefault();
 		e.stopPropagation();
+
+		// Camera-based scrolling for full-screen mode
+		if (props.getTlEditor) {
+			const editor = props.getTlEditor();
+			if (editor) {
+				const viewport = editor.getViewportScreenBounds();
+				const scrollAmount = viewport.h * 0.6;
+				const camera = editor.getCamera();
+				silentlyChangeStore(editor, () => {
+					editor.setCamera({ x: camera.x, y: camera.y - scrollAmount, z: camera.z });
+				});
+				return;
+			}
+		}
+
+		// DOM-based scrolling for embed mode
 		const container = getScrollContainer();
 		if (container) {
 			container.scrollBy({ top: container.clientHeight * 0.8 });

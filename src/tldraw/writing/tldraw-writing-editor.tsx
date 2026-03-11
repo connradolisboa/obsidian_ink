@@ -405,6 +405,7 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 					onStoreChange = {(tlEditor: Editor) => queueOrRunStorePostProcesses(tlEditor)}
 				/>
 				{props.embedded && props.plugin.settings.showScrollButtons && <ScrollButtons />}
+				{!props.embedded && <ScrollButtons getTlEditor={getTlEditor} />}
 			</SecondaryMenuBar>
 			
 		</div>

@@ -7,6 +7,7 @@ import { EraseIcon } from "src/graphics/icons/erase-icon";
 import { Editor } from "@tldraw/tldraw";
 import { silentlyChangeStore } from "src/utils/tldraw-helpers";
 import { DrawIcon } from "src/graphics/icons/draw-icon";
+import { HandIcon } from "src/graphics/icons/hand-icon";
 import classNames from "classnames";
 
 //////////
@@ -16,10 +17,12 @@ export enum tool {
 	select = 'select',
 	draw = 'draw',
 	eraser = 'eraser',
+	hand = 'hand',
 }
 interface DrawingMenuProps {
     getTlEditor: () => Editor | undefined,
     onStoreChange: (elEditor: Editor) => void,
+    embedded?: boolean,
 }
 
 export const DrawingMenu = React.forwardRef<HTMLDivElement, DrawingMenuProps>((props, ref) => {
@@ -45,24 +48,41 @@ export const DrawingMenu = React.forwardRef<HTMLDivElement, DrawingMenuProps>((p
 		props.onStoreChange(editor)
 
 	}
+	function lockCameraIfEmbedded(editor: Editor) {
+		if (props.embedded) {
+			editor.setCameraOptions({ isLocked: true });
+		}
+	}
 	function activateSelectTool() {
 		const editor = props.getTlEditor();
 		if (!editor) return;
+		lockCameraIfEmbedded(editor);
 		editor.setCurrentTool('select');
 		setCurTool(tool.select);
-
 	}
 	function activateDrawTool() {
 		const editor = props.getTlEditor();
 		if (!editor) return;
+		lockCameraIfEmbedded(editor);
 		editor.setCurrentTool('draw');
 		setCurTool(tool.draw);
 	}
 	function activateEraseTool() {
 		const editor = props.getTlEditor();
 		if (!editor) return;
+		lockCameraIfEmbedded(editor);
 		editor.setCurrentTool('eraser');
 		setCurTool(tool.eraser);
+	}
+	function activateHandTool() {
+		const editor = props.getTlEditor();
+		if (!editor) return;
+		// Unlock camera so hand tool can pan
+		if (props.embedded) {
+			editor.setCameraOptions({ isLocked: false });
+		}
+		editor.setCurrentTool('hand');
+		setCurTool(tool.hand);
 	}
 
     ///////////
@@ -112,6 +132,12 @@ export const DrawingMenu = React.forwardRef<HTMLDivElement, DrawingMenuProps>((p
                     disabled={curTool === tool.eraser}
                 >
                     <EraseIcon/>
+                </button>
+                <button
+                    onPointerDown={activateHandTool}
+                    disabled={curTool === tool.hand}
+                >
+                    <HandIcon/>
                 </button>
             </div>
             <div

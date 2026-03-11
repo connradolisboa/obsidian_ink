@@ -10,6 +10,68 @@
 
 
 
+// Collapse/expand button and collapsed bar (common to writing and drawing embeds)
+.ddc_ink_embed {
+    &.ddc_ink_collapsed {
+        padding-top: 0.25em !important;
+        padding-bottom: 0.25em !important;
+    }
+}
+
+.ddc_ink_collapsed-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 12px;
+    border-radius: 8px;
+    background-color: var(--color-base-20);
+    cursor: default;
+
+    .ddc_ink_collapsed-label {
+        font-size: 13px;
+        color: var(--text-muted);
+        font-style: italic;
+    }
+}
+
+.ddc_ink_collapse-btn {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: none;
+    border-radius: 6px;
+    background-color: var(--color-base-20);
+    color: var(--text-muted);
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+    pointer-events: all;
+
+    svg {
+        width: 18px;
+        height: 18px;
+        fill: currentColor;
+    }
+}
+
+.ddc_ink_collapsed-bar .ddc_ink_collapse-btn {
+    position: static;
+    opacity: 1;
+    background: none;
+}
+
+.ddc_ink_writing-embed-preview:hover .ddc_ink_collapse-btn,
+.ddc_ink_drawing-embed-preview:hover .ddc_ink_collapse-btn {
+    opacity: 1;
+}
+
 // TODO: This is common to drawing and writing files. It should be moved to a common area.
 .markdown-source-view.mod-cm6 .cm-content > .cm-preview-code-block.cm-embed-block.markdown-rendered.ddc_ink_embed-block,
 .markdown-source-view.mod-cm6 .cm-content > .cm-preview-code-block.cm-embed-block.markdown-rendered.ddc_ink_embed-block:hover {

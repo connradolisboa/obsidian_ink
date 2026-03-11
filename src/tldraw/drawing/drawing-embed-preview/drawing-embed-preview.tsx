@@ -9,6 +9,7 @@ import { TFile } from 'obsidian';
 import { useAtomValue, useSetAtom } from 'jotai';
 import { DrawingEmbedState, embedStateAtom, previewActiveAtom } from '../drawing-embed';
 import { getInkFileData } from 'src/utils/getInkFileData';
+import { CollapseIcon } from 'src/graphics/icons/collapse-icon';
 const emptyDrawingSvg = require('../../../placeholders/empty-drawing-embed.svg');
 
 //////////
@@ -19,6 +20,7 @@ interface DrawingEmbedPreviewProps {
     onReady: Function,
     drawingFile: TFile,
 	onClick: React.MouseEventHandler,
+	onCollapseClick?: () => void,
 }
 
 // Wraps the component so that it can full unmount when inactive
@@ -96,6 +98,20 @@ export const DrawingEmbedPreview: React.FC<DrawingEmbedPreviewProps> = (props) =
                     pointerEvents = "visible"
                     onLoad = {onLoad}
                 />
+            )}
+
+            {props.onCollapseClick && (
+                <button
+                    className="ddc_ink_collapse-btn"
+                    onPointerDown={(e) => {
+                        e.stopPropagation();
+                        props.onCollapseClick?.();
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                    aria-label="Collapse embed"
+                >
+                    <CollapseIcon />
+                </button>
             )}
         </div>
     </>;

@@ -18,6 +18,8 @@ import classNames from "classnames";
 import { atom, useSetAtom } from "jotai";
 import { getInkFileData } from "src/utils/getInkFileData";
 import { verbose } from "src/utils/log-to-console";
+import { CollapseIcon } from "src/graphics/icons/collapse-icon";
+import { ExpandIcon } from "src/graphics/icons/expand-icon";
 
 ///////
 ///////
@@ -62,7 +64,8 @@ export function WritingEmbed (props: {
 	// const dispatch = useDispatch();
 
 	const setEmbedState = useSetAtom(embedStateAtom);
-	
+	const [collapsed, setCollapsed] = useState(false);
+
 	// On first mount
 	React.useEffect( () => {
 		//console.log('EMBED mounted')
@@ -109,12 +112,13 @@ export function WritingEmbed (props: {
 
 	////////////
 
-	return <>		
+	return <>
 		<div
 			ref = {embedContainerElRef}
 			className = {classNames([
 				'ddc_ink_embed',
 				'ddc_ink_writing-embed',
+				collapsed && 'ddc_ink_collapsed',
 			])}
 			style = {{
 				// Must be padding as margin creates codemirror calculation issues
@@ -122,35 +126,51 @@ export function WritingEmbed (props: {
 				paddingBottom: '0.5em',
 			}}
 		>
-			{/* Include another container so that it's height isn't affected by the padding of the outer container */}
-			<div
-				className = 'ddc_ink_resize-container'
-				ref = {resizeContainerElRef}
-			>
-			
-				<WritingEmbedPreviewWrapper
-					plugin = {props.plugin}
-					onResize = {(height: number) => resizeContainer(height)}
-					writingFile = {props.writingFileRef}
-					onClick = {async (event) => {
-						// dispatch({ type: 'global-session/setActiveEmbedId', payload: embedId })
-						// setPageData( await refreshPageData(props.plugin, props.fileRef) );
-						switchToEditMode();
-					}}
-				/>
+			{collapsed && (
+				<div className="ddc_ink_collapsed-bar">
+					<span className="ddc_ink_collapsed-label">Writing</span>
+					<button
+						className="ddc_ink_collapse-btn"
+						onPointerDown={() => setCollapsed(false)}
+						aria-label="Expand embed"
+					>
+						<ExpandIcon />
+					</button>
+				</div>
+			)}
 
-				<TldrawWritingEditorWrapper
-					plugin = {props.plugin} // TODO: Try and remove this
-					onResize = {(height: number) => resizeContainer(height)}
-					writingFile = {props.writingFileRef}
-					save = {props.save}
-					embedded
-					saveControlsReference = {registerEditorControls}
-					closeEditor = {saveAndSwitchToPreviewMode}
-					extendedMenu = {commonExtendedOptions}
-				/>
+			{!collapsed && <>
+				{/* Include another container so that it's height isn't affected by the padding of the outer container */}
+				<div
+					className = 'ddc_ink_resize-container'
+					ref = {resizeContainerElRef}
+				>
 
-			</div>
+					<WritingEmbedPreviewWrapper
+						plugin = {props.plugin}
+						onResize = {(height: number) => resizeContainer(height)}
+						writingFile = {props.writingFileRef}
+						onCollapseClick = {() => setCollapsed(true)}
+						onClick = {async (event) => {
+							// dispatch({ type: 'global-session/setActiveEmbedId', payload: embedId })
+							// setPageData( await refreshPageData(props.plugin, props.fileRef) );
+							switchToEditMode();
+						}}
+					/>
+
+					<TldrawWritingEditorWrapper
+						plugin = {props.plugin} // TODO: Try and remove this
+						onResize = {(height: number) => resizeContainer(height)}
+						writingFile = {props.writingFileRef}
+						save = {props.save}
+						embedded
+						saveControlsReference = {registerEditorControls}
+						closeEditor = {saveAndSwitchToPreviewMode}
+						extendedMenu = {commonExtendedOptions}
+					/>
+
+				</div>
+			</>}
 
 		</div>
 	</>;
