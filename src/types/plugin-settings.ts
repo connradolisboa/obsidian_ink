@@ -20,6 +20,8 @@ export interface PluginSettings {
 	writingDynamicStrokeThickness: boolean,
 	writingSmoothing: boolean,
 	stylusOnlyInput: boolean,
+	fingerSwipeScroll: boolean,
+	showScrollButtons: boolean,
 	writingLinesWhenLocked: boolean,
 	writingBackgroundWhenLocked: boolean,
 	// Drawing specific
@@ -47,6 +49,8 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 	writingDynamicStrokeThickness: true,
 	writingSmoothing: false,
 	stylusOnlyInput: false,
+	fingerSwipeScroll: false,
+	showScrollButtons: true,
 	writingLinesWhenLocked: true,
 	writingBackgroundWhenLocked: true,
 	// Drawing specific

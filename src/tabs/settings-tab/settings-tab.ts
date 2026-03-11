@@ -381,6 +381,30 @@ function insertWritingSettings(containerEl: HTMLElement, plugin: InkPlugin, refr
 
 	new Setting(sectionEl)
 		.setClass('ddc_ink_setting')
+		.setName('Finger swipe scroll')
+		.setDesc('Allow finger swipe gestures to scroll the page within writing embeds. Requires Stylus only input to be enabled.')
+		.addToggle((toggle) => {
+			toggle.setValue(plugin.settings.fingerSwipeScroll);
+			toggle.onChange(async (value: boolean) => {
+				plugin.settings.fingerSwipeScroll = value;
+				await plugin.saveSettings();
+			});
+		});
+
+	new Setting(sectionEl)
+		.setClass('ddc_ink_setting')
+		.setName('Show scroll buttons')
+		.setDesc('Show up/down scroll buttons on embedded writing editors. You can disable these if you use finger swipe scrolling instead (requires Stylus only input).')
+		.addToggle((toggle) => {
+			toggle.setValue(plugin.settings.showScrollButtons);
+			toggle.onChange(async (value: boolean) => {
+				plugin.settings.showScrollButtons = value;
+				await plugin.saveSettings();
+			});
+		});
+
+	new Setting(sectionEl)
+		.setClass('ddc_ink_setting')
 		.setName('Writing stroke limit')
 		.setDesc(`Too much writing in one embed can create a lag between your physical pen movement and the line appearing on screen. The stroke limit defines the maximum pen strokes before old strokes start becoming invisible until the embed is locked. Set this to a lower number if you're experiencing lag or jagged writing.`)
 

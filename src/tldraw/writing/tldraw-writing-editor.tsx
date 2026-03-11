@@ -110,7 +110,8 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 
 		const ereader = isEreader();
 		const stylusOnly = props.plugin.settings.stylusOnlyInput || ereader;
-		preventTldrawCanvasesCausingObsidianGestures(editor, { stylusOnly });
+		const fingerSwipeScroll = props.plugin.settings.fingerSwipeScroll;
+		preventTldrawCanvasesCausingObsidianGestures(editor, { stylusOnly, fingerSwipeScroll });
 
 		// Use simple constant-width strokes instead of perfect-freehand smoothing
 		const useSimpleStrokes = !props.plugin.settings.writingDynamicStrokeThickness || ereader;
@@ -384,7 +385,7 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 					getTlEditor = {getTlEditor}
 					onStoreChange = {(tlEditor: Editor) => queueOrRunStorePostProcesses(tlEditor)}
 				/>
-				{props.embedded && <ScrollButtons />}
+				{props.embedded && props.plugin.settings.showScrollButtons && <ScrollButtons />}
 			</SecondaryMenuBar>
 			
 		</div>

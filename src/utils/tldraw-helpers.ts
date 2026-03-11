@@ -97,7 +97,7 @@ export function getActivitySummary(entry: HistoryEntry<TLRecord>) {
 	return summary;
 }
 
-export function preventTldrawCanvasesCausingObsidianGestures(tlEditor: Editor, options?: { stylusOnly?: boolean }) {
+export function preventTldrawCanvasesCausingObsidianGestures(tlEditor: Editor, options?: { stylusOnly?: boolean; fingerSwipeScroll?: boolean }) {
 	const tlContainer = tlEditor.getContainer();
 
 	const tlCanvas = tlContainer.getElementsByClassName('tl-canvas')[0] as HTMLDivElement;
@@ -110,14 +110,46 @@ export function preventTldrawCanvasesCausingObsidianGestures(tlEditor: Editor, o
 
 	// Palm rejection: block touch events so only stylus (pen) input reaches tldraw
 	if (options?.stylusOnly) {
+		let penIsActive = false;
+
 		const blockTouch = (e: PointerEvent) => {
 			if (e.pointerType === 'touch') {
 				e.preventDefault();
 				e.stopPropagation();
 			}
 		};
-		tlCanvas.addEventListener('pointerdown', blockTouch, { capture: true });
+		tlCanvas.addEventListener('pointerdown', (e: PointerEvent) => {
+			if (e.pointerType === 'pen') penIsActive = true;
+			blockTouch(e);
+		}, { capture: true });
 		tlCanvas.addEventListener('pointermove', blockTouch, { capture: true });
+		tlCanvas.addEventListener('pointerup', (e: PointerEvent) => {
+			if (e.pointerType === 'pen') penIsActive = false;
+		}, { capture: true });
+		tlCanvas.addEventListener('pointercancel', (e: PointerEvent) => {
+			if (e.pointerType === 'pen') penIsActive = false;
+		}, { capture: true });
+
+		// Allow finger swipe to scroll the page (via .cm-scroller container)
+		// Skip scrolling when the stylus is active (Boox stylus fires touch events too)
+		if (options?.fingerSwipeScroll) {
+			let touchStartY: number | null = null;
+			tlCanvas.addEventListener('touchstart', (e: TouchEvent) => {
+				if (penIsActive) return;
+				touchStartY = e.touches[0].clientY;
+			}, { passive: true });
+			tlCanvas.addEventListener('touchmove', (e: TouchEvent) => {
+				if (penIsActive || touchStartY === null) return;
+				const scrollContainer = tlCanvas.closest('.cm-scroller') as HTMLElement;
+				if (!scrollContainer) return;
+				const deltaY = touchStartY - e.touches[0].clientY;
+				scrollContainer.scrollBy(0, deltaY);
+				touchStartY = e.touches[0].clientY;
+			}, { passive: true });
+			tlCanvas.addEventListener('touchend', () => {
+				touchStartY = null;
+			}, { passive: true });
+		}
 	}
 }
 
