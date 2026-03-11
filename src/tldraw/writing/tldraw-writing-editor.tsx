@@ -125,17 +125,14 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 		}
 
 		resizeContainerIfEmbed(tlEditorRef.current);
-		if(editorWrapperRefEl.current) {
-			editorWrapperRefEl.current.style.opacity = '1';
-		}
 
 		updateWritingStoreIfNeeded(editor);
-		
+
 		// tldraw content setup
 		adaptTldrawToObsidianThemeMode(editor);
 		resizeWritingTemplateInvitingly(editor);
 		resizeContainerIfEmbed(editor);	// Has an effect if the embed is new and started at 0
-				
+
 		// view set up
 		if(props.embedded) {
 			initWritingCamera(editor);
@@ -146,6 +143,22 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 			initWritingCamera(editor, MENUBAR_HEIGHT_PX);
 			cameraLimitsRef.current = initWritingCameraLimits(editor);
 		}
+
+		// Show editor only after camera is initialized to prevent drawing with wrong coordinates
+		if(editorWrapperRefEl.current) {
+			editorWrapperRefEl.current.style.opacity = '1';
+		}
+
+		// Re-init camera after layout settles to ensure correct dimensions
+		requestAnimationFrame(() => {
+			if(props.embedded) {
+				initWritingCamera(editor);
+				editor.setCameraOptions({ isLocked: true });
+			} else {
+				initWritingCamera(editor, MENUBAR_HEIGHT_PX);
+				cameraLimitsRef.current = initWritingCameraLimits(editor);
+			}
+		});
 
 		// Runs on any USER caused change to the store, (Anything wrapped in silently change method doesn't call this).
 		const removeUserActionListener = editor.store.listen((entry) => {
@@ -225,11 +238,17 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 
 		const embedBounds = editor.getViewportScreenBounds();
 		const contentBounds = getWritingContainerBounds(editor);
-		
+
 		if (contentBounds) {
 			const contentRatio = contentBounds.w / contentBounds.h;
 			const newEmbedHeight = embedBounds.w / contentRatio;
 			props.onResize(newEmbedHeight);
+
+			// Re-init camera after container resize to prevent coordinate distortion
+			requestAnimationFrame(() => {
+				initWritingCamera(editor);
+				editor.setCameraOptions({ isLocked: true });
+			});
 		}
 
 	}
