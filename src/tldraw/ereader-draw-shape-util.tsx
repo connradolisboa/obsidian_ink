@@ -204,6 +204,11 @@ function useDefaultColorTheme() {
 
 ////////
 
+let ereaderStreamline = 0.1;
+export function setEreaderStreamline(value: number) {
+	ereaderStreamline = value;
+}
+
 /** Freehand options with minimal smoothing for e-reader raw input fidelity */
 function getEreaderFreehandOptions(
 	shapeProps: { dash: string; isPen: boolean; isComplete: boolean },
@@ -213,7 +218,7 @@ function getEreaderFreehandOptions(
 	return {
 		size: strokeWidth,
 		thinning: 0,
-		streamline: 0.1,
+		streamline: ereaderStreamline,
 		smoothing: 0.1,
 		simulatePressure: false,
 		easing: EASINGS.linear,

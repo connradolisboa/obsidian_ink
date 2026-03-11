@@ -20,7 +20,7 @@ import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { getInkFileData } from 'src/utils/getInkFileData';
 import { verbose } from 'src/utils/log-to-console';
 import { isEreader } from 'src/utils/isEreader';
-import { EreaderDrawShapeUtil } from '../ereader-draw-shape-util';
+import { EreaderDrawShapeUtil, setEreaderStreamline } from '../ereader-draw-shape-util';
 import { SecondaryMenuBar } from '../secondary-menu-bar/secondary-menu-bar';
 import ModifyMenu from '../modify-menu/modify-menu';
 import { ScrollButtons } from '../scroll-buttons/scroll-buttons';
@@ -112,6 +112,8 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 		const stylusOnly = props.plugin.settings.stylusOnlyInput || ereader;
 		const fingerSwipeScroll = props.plugin.settings.fingerSwipeScroll;
 		preventTldrawCanvasesCausingObsidianGestures(editor, { stylusOnly, fingerSwipeScroll });
+
+		setEreaderStreamline(props.plugin.settings.writingStreamline);
 
 		// Use simple constant-width strokes instead of perfect-freehand smoothing
 		const useSimpleStrokes = !props.plugin.settings.writingDynamicStrokeThickness || ereader;

@@ -325,6 +325,14 @@ function insertWritingSettings(containerEl: HTMLElement, plugin: InkPlugin, refr
 		refresh();
 	}
 
+	const saveWritingStreamline = async (enteredValue: string) => {
+		const parsed = parseFloat(enteredValue);
+		const value = isNaN(parsed) ? DEFAULT_SETTINGS.writingStreamline : Math.min(1, Math.max(0, parsed));
+		plugin.settings.writingStreamline = value;
+		await plugin.saveSettings();
+		refresh();
+	}
+
 	const sectionEl = containerEl.createDiv('ddc_ink_section ddc_ink_controls-section');
 	sectionEl.createEl('h2', { text: 'Writing' });
 	sectionEl.createEl('p', { text: `While editing a Markdown file, run the action 'Insert new handwriting section' to embed a section for writing with a stylus.` });
@@ -419,6 +427,22 @@ function insertWritingSettings(containerEl: HTMLElement, plugin: InkPlugin, refr
 				if(ev.key === 'Enter') saveWritingStrokeLimit(textItem.getValue())
 			})
 		});
+
+	new Setting(sectionEl)
+		.setClass('ddc_ink_setting')
+		.setName('Stroke streamline')
+		.setDesc('Smooths out jitter in pen strokes (0 = raw input, 1 = maximum smoothing). Higher values reduce jagged lines but add slight lag between pen and stroke. Default: 0.1. Try 0.2–0.3 for smoother writing without boox-rapid-draw.')
+		.addText((textItem) => {
+			textItem.setValue(plugin.settings.writingStreamline.toString());
+			textItem.setPlaceholder(DEFAULT_SETTINGS.writingStreamline.toString());
+			textItem.inputEl.addEventListener('blur', async (ev: FocusEvent) => {
+				saveWritingStreamline(textItem.getValue())
+			})
+			textItem.inputEl.addEventListener('keypress', async (ev: KeyboardEvent) => {
+				if(ev.key === 'Enter') saveWritingStreamline(textItem.getValue())
+			})
+		});
+
 	insertWritingLimitations(sectionEl);
 }
 
