@@ -97,7 +97,7 @@ export function getActivitySummary(entry: HistoryEntry<TLRecord>) {
 	return summary;
 }
 
-export function preventTldrawCanvasesCausingObsidianGestures(tlEditor: Editor) {
+export function preventTldrawCanvasesCausingObsidianGestures(tlEditor: Editor, options?: { stylusOnly?: boolean }) {
 	const tlContainer = tlEditor.getContainer();
 
 	const tlCanvas = tlContainer.getElementsByClassName('tl-canvas')[0] as HTMLDivElement;
@@ -108,13 +108,17 @@ export function preventTldrawCanvasesCausingObsidianGestures(tlEditor: Editor) {
 		e.stopPropagation();
 	})
 
-	// NOTE: This might be a more appropriate method than above, but I don't know how to get a reference to the event object to stop propogation
-	// editor.addListener('event', (e: TLEventInfo) => {
-	// 	// if(e instanceof TLPointerEventInfo)
-	// 	const str = `type: ${e.type}, name: ${e.name}, isPen: ${e?.isPen}`;
-	// 	console.log(e);
-	// 	setOutputLog(str);
-	// });
+	// Palm rejection: block touch events so only stylus (pen) input reaches tldraw
+	if (options?.stylusOnly) {
+		const blockTouch = (e: PointerEvent) => {
+			if (e.pointerType === 'touch') {
+				e.preventDefault();
+				e.stopPropagation();
+			}
+		};
+		tlCanvas.addEventListener('pointerdown', blockTouch, { capture: true });
+		tlCanvas.addEventListener('pointermove', blockTouch, { capture: true });
+	}
 }
 
 export function initWritingCamera(editor: Editor, topMarginPx: number = 0) {

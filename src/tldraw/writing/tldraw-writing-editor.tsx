@@ -1,5 +1,5 @@
 import './tldraw-writing-editor.scss';
-import { Box, Editor, HistoryEntry, StoreSnapshot, TLStoreSnapshot, TLRecord, TLShapeId, TLStore, TLUiOverrides, TLUnknownShape, Tldraw, getSnapshot, TLSerializedStore, TldrawOptions, TldrawEditor, defaultTools, defaultShapeTools, defaultShapeUtils, defaultBindingUtils, TldrawScribble, TldrawShapeIndicators, TldrawSelectionForeground, TldrawSelectionBackground, TldrawHandles, TLEditorSnapshot } from "@tldraw/tldraw";
+import { Box, DefaultDashStyle, Editor, HistoryEntry, StoreSnapshot, TLStoreSnapshot, TLRecord, TLShapeId, TLStore, TLUiOverrides, TLUnknownShape, Tldraw, getSnapshot, TLSerializedStore, TldrawOptions, TldrawEditor, defaultTools, defaultShapeTools, defaultShapeUtils, defaultBindingUtils, TldrawScribble, TldrawShapeIndicators, TldrawSelectionForeground, TldrawSelectionBackground, TldrawHandles, TLEditorSnapshot } from "@tldraw/tldraw";
 import { useRef } from "react";
 import { Activity, WritingCameraLimits, adaptTldrawToObsidianThemeMode, deleteObsoleteWritingTemplateShapes, focusChildTldrawEditor, getActivityType, getWritingContainerBounds, getWritingSvg, hideWritingContainer, hideWritingLines, hideWritingTemplate, initWritingCamera, initWritingCameraLimits, lockShape, prepareWritingSnapshot, preventTldrawCanvasesCausingObsidianGestures, resizeWritingTemplateInvitingly, restrictWritingCamera, silentlyChangeStore, unhideWritingContainer, unhideWritingLines, unhideWritingTemplate, unlockShape, updateWritingStoreIfNeeded, useStash } from "../../utils/tldraw-helpers";
 import { WritingContainer, WritingContainerUtil } from "../writing-shapes/writing-container"
@@ -19,6 +19,7 @@ import { editorActiveAtom, WritingEmbedState, embedStateAtom } from './writing-e
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { getInkFileData } from 'src/utils/getInkFileData';
 import { verbose } from 'src/utils/log-to-console';
+import { isEreader } from 'src/utils/isEreader';
 import { SecondaryMenuBar } from '../secondary-menu-bar/secondary-menu-bar';
 import ModifyMenu from '../modify-menu/modify-menu';
 
@@ -95,7 +96,21 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 		const editor = tlEditorRef.current = _editor;
 		setEmbedState(WritingEmbedState.editor);
 		focusChildTldrawEditor(editorWrapperRefEl.current);
-		preventTldrawCanvasesCausingObsidianGestures(editor);
+
+		const ereader = isEreader();
+		const stylusOnly = props.plugin.settings.stylusOnlyInput || ereader;
+		preventTldrawCanvasesCausingObsidianGestures(editor, { stylusOnly });
+
+		// Use simple constant-width strokes instead of perfect-freehand smoothing
+		const useSimpleStrokes = !props.plugin.settings.writingDynamicStrokeThickness || ereader;
+		if (useSimpleStrokes) {
+			editor.setStyleForNextShapes(DefaultDashStyle, 'solid');
+		}
+
+		// Apply e-reader CSS optimizations (disable animations/transitions)
+		if (ereader && editorWrapperRefEl.current) {
+			editorWrapperRefEl.current.classList.add('ddc_ink_ereader-mode');
+		}
 
 		resizeContainerIfEmbed(tlEditorRef.current);
 		if(editorWrapperRefEl.current) {

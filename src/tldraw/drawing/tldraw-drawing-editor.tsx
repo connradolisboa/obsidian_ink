@@ -1,5 +1,5 @@
 import './tldraw-drawing-editor.scss';
-import { Editor, HistoryEntry, StoreSnapshot, TLRecord, TLStoreSnapshot, TLUiOverrides, Tldraw, TldrawEditor, TldrawHandles, TldrawOptions, TldrawScribble, TldrawSelectionBackground, TldrawSelectionForeground, TldrawShapeIndicators, defaultShapeTools, defaultShapeUtils, defaultTools, getSnapshot, TLSerializedStore, TLEditorSnapshot, TLUiActionsContextType } from "@tldraw/tldraw";
+import { DefaultDashStyle, Editor, HistoryEntry, StoreSnapshot, TLRecord, TLStoreSnapshot, TLUiOverrides, Tldraw, TldrawEditor, TldrawHandles, TldrawOptions, TldrawScribble, TldrawSelectionBackground, TldrawSelectionForeground, TldrawShapeIndicators, defaultShapeTools, defaultShapeUtils, defaultTools, getSnapshot, TLSerializedStore, TLEditorSnapshot, TLUiActionsContextType } from "@tldraw/tldraw";
 import { useRef } from "react";
 import { Activity, adaptTldrawToObsidianThemeMode, focusChildTldrawEditor, getActivityType, getDrawingSvg, initDrawingCamera, prepareDrawingSnapshot, preventTldrawCanvasesCausingObsidianGestures } from "../../utils/tldraw-helpers";
 import InkPlugin from "../../main";
@@ -20,6 +20,7 @@ import { DrawingEmbedState, editorActiveAtom, embedStateAtom } from './drawing-e
 import { getInkFileData } from 'src/utils/getInkFileData';
 import { ResizeHandle } from 'src/components/jsx-components/resize-handle/resize-handle';
 import { debug, verbose, warn } from 'src/utils/log-to-console';
+import { isEreader } from 'src/utils/isEreader';
 import { SecondaryMenuBar } from '../secondary-menu-bar/secondary-menu-bar';
 import ModifyMenu from '../modify-menu/modify-menu';
 
@@ -91,7 +92,21 @@ export function TldrawDrawingEditor(props: TldrawDrawingEditorProps) {
 		const editor = tlEditorRef.current = _editor;
 		setEmbedState(DrawingEmbedState.editor);
 		focusChildTldrawEditor(editorWrapperRefEl.current);
-		preventTldrawCanvasesCausingObsidianGestures(editor);
+
+		const ereader = isEreader();
+		const stylusOnly = props.plugin.settings.stylusOnlyInput || ereader;
+		preventTldrawCanvasesCausingObsidianGestures(editor, { stylusOnly });
+
+		// Use simple constant-width strokes on e-readers
+		const useSimpleStrokes = !props.plugin.settings.writingDynamicStrokeThickness || ereader;
+		if (useSimpleStrokes) {
+			editor.setStyleForNextShapes(DefaultDashStyle, 'solid');
+		}
+
+		// Apply e-reader CSS optimizations
+		if (ereader && editorWrapperRefEl.current) {
+			editorWrapperRefEl.current.classList.add('ddc_ink_ereader-mode');
+		}
 
 		// tldraw content setup
 		adaptTldrawToObsidianThemeMode(editor);

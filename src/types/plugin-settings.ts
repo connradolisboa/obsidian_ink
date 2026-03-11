@@ -19,6 +19,7 @@ export interface PluginSettings {
 	writingStrokeLimit: number,
 	writingDynamicStrokeThickness: boolean,
 	writingSmoothing: boolean,
+	stylusOnlyInput: boolean,
 	writingLinesWhenLocked: boolean,
 	writingBackgroundWhenLocked: boolean,
 	// Drawing specific
@@ -45,6 +46,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 	writingStrokeLimit: 200,
 	writingDynamicStrokeThickness: true,
 	writingSmoothing: false,
+	stylusOnlyInput: false,
 	writingLinesWhenLocked: true,
 	writingBackgroundWhenLocked: true,
 	// Drawing specific
