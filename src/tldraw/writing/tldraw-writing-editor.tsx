@@ -24,6 +24,9 @@ import { EreaderDrawShapeUtil, setEreaderStreamline } from '../ereader-draw-shap
 import { SecondaryMenuBar } from '../secondary-menu-bar/secondary-menu-bar';
 import ModifyMenu from '../modify-menu/modify-menu';
 import { ScrollButtons } from '../scroll-buttons/scroll-buttons';
+import { PageNavigation } from '../page-navigation/page-navigation';
+import { WRITING_DEFAULT_PAGE_HEIGHT } from 'src/constants';
+import { createWritingPage, detectPageOverflow, getCurrentPageIndex, getPageCount, initializePagesMode, navigateToPage } from 'src/utils/writing-pages';
 
 ///////
 ///////
@@ -40,6 +43,9 @@ interface TldrawWritingEditorProps {
 	resizeEmbedContainer?: (pxHeight: number) => void,
 	closeEditor?: Function,
 	saveControlsReference?: Function,
+
+	// For fullscreen focus mode
+	onExitFocusMode?: () => void,
 }
 
 // Wraps the component so that it can full unmount when inactive
@@ -103,6 +109,10 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 		Handles: TldrawHandles,
 	}
 
+	const isPageMode = props.plugin.settings.writingPageMode === 'pages';
+	const linesPerPage = props.plugin.settings.writingLinesPerPage;
+	const pageHeight = linesPerPage * WRITING_LINE_HEIGHT;
+
 	const handleMount = (_editor: Editor) => {
 		const editor = tlEditorRef.current = _editor;
 		setEmbedState(WritingEmbedState.editor);
@@ -130,9 +140,16 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 
 		updateWritingStoreIfNeeded(editor);
 
+		// Initialize pages mode if enabled
+		if (isPageMode) {
+			initializePagesMode(editor, linesPerPage);
+		}
+
 		// tldraw content setup
 		adaptTldrawToObsidianThemeMode(editor);
-		resizeWritingTemplateInvitingly(editor);
+		if (!isPageMode) {
+			resizeWritingTemplateInvitingly(editor);
+		}
 		resizeContainerIfEmbed(editor);	// Has an effect if the embed is new and started at 0
 
 		// view set up
@@ -188,6 +205,12 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 							
 				case Activity.DrawingCompleted:
 					queueOrRunStorePostProcesses(editor);
+					// In pages mode, auto-create next page on overflow
+					if (isPageMode && detectPageOverflow(editor, pageHeight)) {
+						const pageCount = getPageCount(editor);
+						createWritingPage(editor, pageCount, linesPerPage);
+						navigateToPage(editor, pageCount, props.embedded ? 0 : MENUBAR_HEIGHT_PX);
+					}
 					break;
 					
 				case Activity.DrawingErased:
@@ -263,7 +286,7 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 
 	// Use this to run optimisations that that are quick and need to occur immediately on lifting the stylus
 	const instantInputPostProcess = (editor: Editor) => { //, entry?: HistoryEntry<TLRecord>) => {
-		if(!props.plugin.settings.writingManualLineAdd) {
+		if(!isPageMode && !props.plugin.settings.writingManualLineAdd) {
 			resizeWritingTemplateInvitingly(editor);
 			resizeContainerIfEmbed(editor);
 		}
@@ -323,10 +346,28 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 	const completeSave = async (editor: Editor): Promise<void> => {
 		verbose('completeSave');
 		let previewUri;
-		
+
 		unstashStaleContent(editor);
+
+		// In pages mode, switch to page 1 for preview generation, then switch back
+		const currentPageId = editor.getCurrentPageId();
+		const pages = editor.getPages();
+		if (isPageMode && pages.length > 1) {
+			silentlyChangeStore(editor, () => {
+				editor.setCurrentPage(pages[0].id);
+			});
+		}
+
 		const tlEditorSnapshot = getSnapshot(editor.store);
 		const svgObj = await getWritingSvg(editor);
+
+		// Switch back to the original page
+		if (isPageMode && pages.length > 1) {
+			silentlyChangeStore(editor, () => {
+				editor.setCurrentPage(currentPageId);
+			});
+		}
+
 		stashStaleContent(editor);
 		
 		if (svgObj) {
@@ -410,6 +451,22 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 						menuOptions = {props.extendedMenu}
 					/>
 				)}
+				{!props.embedded && props.onExitFocusMode && (
+					<button
+						className="ink_exit-focus-mode-button"
+						onPointerDown={(e) => {
+							e.preventDefault();
+							e.stopPropagation();
+							props.onExitFocusMode!();
+						}}
+						aria-label="Exit focus mode"
+					>
+						{/* Fullscreen exit — Material Symbols Rounded */}
+						<svg xmlns="http://www.w3.org/2000/svg" height={24} viewBox="0 -960 960 960" width={24}>
+							<path d="M240-120v-120H120v-80h200v200h-80Zm400 0v-200h200v80H720v120h-80ZM120-640v-80h120v-120h80v200H120Zm520 0v-200h80v120h120v80H640Z" />
+						</svg>
+					</button>
+				)}
 			</PrimaryMenuBar>
 
 			<SecondaryMenuBar>
@@ -417,7 +474,7 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 					getTlEditor = {getTlEditor}
 					onStoreChange = {(tlEditor: Editor) => queueOrRunStorePostProcesses(tlEditor)}
 				/>
-				{props.plugin.settings.writingManualLineAdd && (
+				{!isPageMode && props.plugin.settings.writingManualLineAdd && (
 					<button
 						className="ink_add-lines-button"
 						onPointerDown={handleAddLines}
@@ -428,8 +485,22 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 						</svg>
 					</button>
 				)}
-				{props.embedded && props.plugin.settings.showScrollButtons && <ScrollButtons />}
-				{!props.embedded && props.plugin.settings.showScrollButtons && <ScrollButtons getTlEditor={getTlEditor} />}
+				{isPageMode && (
+					<PageNavigation
+						getTlEditor = {getTlEditor}
+						linesPerPage = {linesPerPage}
+						topMarginPx = {props.embedded ? 0 : MENUBAR_HEIGHT_PX}
+						onPageChange = {() => {
+							const editor = tlEditorRef.current;
+							if (editor) {
+								unstashStaleContent(editor);
+								resizeContainerIfEmbed(editor);
+							}
+						}}
+					/>
+				)}
+				{!isPageMode && props.embedded && props.plugin.settings.showScrollButtons && <ScrollButtons />}
+				{!isPageMode && !props.embedded && props.plugin.settings.showScrollButtons && <ScrollButtons getTlEditor={getTlEditor} />}
 			</SecondaryMenuBar>
 			
 		</div>

@@ -58,6 +58,30 @@
 }
 
 
+// Exit focus mode button
+.ink_exit-focus-mode-button {
+    width: 2.5em;
+    height: 2.5em;
+    border-radius: 0.8em;
+    padding: 0 !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: auto;
+    opacity: 0.5;
+    margin-left: auto;
+
+    &:hover {
+        opacity: 1;
+    }
+
+    svg {
+        width: 1.2em !important;
+        height: 1.2em !important;
+        fill: currentColor;
+    }
+}
+
 // Focus mode: hide Obsidian chrome when writing fullscreen
 body.ddc_ink_focus-mode {
     // Tab bar / header

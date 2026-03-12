@@ -11,6 +11,26 @@ import { debug, warn, info, error, http, verbose } from "./log-to-console";
 //////////
 //////////
 
+// Shape ID helpers — parameterized by page index for multi-page support.
+// When no pageIndex is provided (scroll mode), returns the original singleton IDs.
+export function getWritingContainerId(pageIndex?: number): TLShapeId {
+	if (pageIndex === undefined) return 'shape:writing-container' as TLShapeId;
+	return `shape:writing-container-${pageIndex}` as TLShapeId;
+}
+
+export function getWritingLinesId(pageIndex?: number): TLShapeId {
+	if (pageIndex === undefined) return 'shape:writing-lines' as TLShapeId;
+	return `shape:writing-lines-${pageIndex}` as TLShapeId;
+}
+
+export function getWritingContainerShape(editor: Editor, pageIndex?: number): WritingContainer | undefined {
+	return editor.getShape(getWritingContainerId(pageIndex)) as WritingContainer | undefined;
+}
+
+export function getWritingLinesShape(editor: Editor, pageIndex?: number): WritingLines | undefined {
+	return editor.getShape(getWritingLinesId(pageIndex)) as WritingLines | undefined;
+}
+
 export enum Activity {
 	PointerMoved,
 	CameraMovedManually,
@@ -385,8 +405,8 @@ export const unhideWritingTemplate = (editor: Editor) => {
 	unhideWritingLines(editor);
 }
 
-export const hideWritingContainer = (editor: Editor) => {
-	const writingContainerShape = editor.getShape('shape:writing-container' as TLShapeId) as WritingContainer;
+export const hideWritingContainer = (editor: Editor, pageIndex?: number) => {
+	const writingContainerShape = getWritingContainerShape(editor, pageIndex);
 	if (!writingContainerShape) return;
 	const savedH = writingContainerShape.props.h;
 
@@ -407,8 +427,8 @@ export const hideWritingContainer = (editor: Editor) => {
 	});
 }
 
-export const hideWritingLines = (editor: Editor) => {
-	const writingLinesShape = editor.getShape('shape:writing-lines' as TLShapeId) as WritingLines;
+export const hideWritingLines = (editor: Editor, pageIndex?: number) => {
+	const writingLinesShape = getWritingLinesShape(editor, pageIndex);
 	if (!writingLinesShape) return;
 	const savedH = writingLinesShape.props.h;
 
@@ -434,8 +454,8 @@ export const hideWritingLines = (editor: Editor) => {
 	});
 }
 
-export const unhideWritingContainer = (editor: Editor) => {
-	const writingContainerShape = editor.getShape('shape:writing-container' as TLShapeId) as WritingContainer;
+export const unhideWritingContainer = (editor: Editor, pageIndex?: number) => {
+	const writingContainerShape = getWritingContainerShape(editor, pageIndex);
 	if (!writingContainerShape) return;
 	const h = writingContainerShape.meta.savedH;
 
@@ -456,8 +476,8 @@ export const unhideWritingContainer = (editor: Editor) => {
 	});
 }
 
-export const unhideWritingLines = (editor: Editor) => {
-	const writingLinesShape = editor.getShape('shape:writing-lines' as TLShapeId) as WritingLines;
+export const unhideWritingLines = (editor: Editor, pageIndex?: number) => {
+	const writingLinesShape = getWritingLinesShape(editor, pageIndex);
 	if (!writingLinesShape) return;
 	const h = writingLinesShape.meta.savedH;
 
@@ -582,19 +602,22 @@ export const updateWritingStoreIfNeeded = (editor: Editor) => {
 	addNewTemplateShapes(editor);
 }
 
-function addNewTemplateShapes(editor: Editor) {
-	const hasLines = editor.store.has('shape:writing-lines' as TLShapeId);
+function addNewTemplateShapes(editor: Editor, pageIndex?: number) {
+	const linesId = getWritingLinesId(pageIndex);
+	const containerId = getWritingContainerId(pageIndex);
+
+	const hasLines = editor.store.has(linesId);
 	if(!hasLines) {
 		editor.createShape({
-			id: 'shape:writing-lines' as TLShapeId,
+			id: linesId,
 			type: 'writing-lines',
 		})
 	}
 
-	const hasContainer = editor.store.has('shape:writing-container' as TLShapeId);
+	const hasContainer = editor.store.has(containerId);
 	if(!hasContainer) {
 			editor.createShape({
-			id: 'shape:writing-container' as TLShapeId,
+			id: containerId,
 			type: 'writing-container',
 		})
 	}
@@ -640,8 +663,8 @@ export function lockShape(editor: Editor, shape: TLUnknownShape) {
 
 }
 
-export function getWritingContainerBounds(editor: Editor): Box {
-	const bounds = editor.getShapePageBounds('shape:writing-container' as TLShapeId)
+export function getWritingContainerBounds(editor: Editor, pageIndex?: number): Box {
+	const bounds = editor.getShapePageBounds(getWritingContainerId(pageIndex))
 	
 	if(bounds) {
 		return bounds;
@@ -755,16 +778,16 @@ export function cropWritingStrokeHeightInvitingly(height: number): number {
  * Add excess space under writing strokes to to enable further writing.
  * Good for while in editing mode.
  */
-export const resizeWritingTemplateInvitingly = (editor: Editor) => {
+export const resizeWritingTemplateInvitingly = (editor: Editor, pageIndex?: number) => {
 	verbose('resizeWritingTemplateInvitingly');
-	
+
 	let contentBounds = getAllStrokeBounds(editor);
 	if (!contentBounds) return;
 
 	contentBounds.h = cropWritingStrokeHeightInvitingly(contentBounds.h);
 
-	const writingLinesShape = editor.getShape('shape:writing-lines' as TLShapeId) as WritingLines;
-	const writingContainerShape = editor.getShape('shape:writing-container' as TLShapeId) as WritingContainer;
+	const writingLinesShape = getWritingLinesShape(editor, pageIndex);
+	const writingContainerShape = getWritingContainerShape(editor, pageIndex);
 	
 	if(!writingLinesShape) return;
 	if(!writingContainerShape) return;
@@ -796,11 +819,11 @@ export const resizeWritingTemplateInvitingly = (editor: Editor) => {
 /***
  * Add a specified number of extra lines to the writing template.
  */
-export const addWritingLines = (editor: Editor, lineCount: number = 5) => {
+export const addWritingLines = (editor: Editor, lineCount: number = 5, pageIndex?: number) => {
 	verbose('addWritingLines');
 
-	const writingLinesShape = editor.getShape('shape:writing-lines' as TLShapeId) as WritingLines;
-	const writingContainerShape = editor.getShape('shape:writing-container' as TLShapeId) as WritingContainer;
+	const writingLinesShape = getWritingLinesShape(editor, pageIndex);
+	const writingContainerShape = getWritingContainerShape(editor, pageIndex);
 
 	if(!writingLinesShape) return;
 	if(!writingContainerShape) return;
@@ -834,17 +857,19 @@ export const addWritingLines = (editor: Editor, lineCount: number = 5) => {
  * Add just enough space under writing strokes to view baseline.
  * Good for screenshots and other non-interactive states.
  */
-export const resizeWritingTemplateTightly = (editor: Editor) => {
+export const resizeWritingTemplateTightly = (editor: Editor, pageIndex?: number) => {
 	verbose('resizeWritingTemplateTightly')
 	let contentBounds = getAllStrokeBounds(editor);
 	if (!contentBounds) return;
 
 	contentBounds.h = cropWritingStrokeHeightTightly(contentBounds.h);
 
-	const writingLinesShape = editor.getShape('shape:writing-lines' as TLShapeId) as WritingLines;
-	const writingContainerShape = editor.getShape('shape:writing-container' as TLShapeId) as WritingContainer;
-	
-	
+	const writingLinesShape = getWritingLinesShape(editor, pageIndex);
+	const writingContainerShape = getWritingContainerShape(editor, pageIndex);
+
+	if(!writingLinesShape) return;
+	if(!writingContainerShape) return;
+
 	silentlyChangeStore( editor, () => {
 		unlockShape(editor, writingContainerShape);
 		unlockShape(editor, writingLinesShape);
@@ -866,8 +891,6 @@ export const resizeWritingTemplateTightly = (editor: Editor) => {
 		lockShape(editor, writingContainerShape);
 		lockShape(editor, writingLinesShape);
 	})
-
-	
 }
 
 

@@ -333,10 +333,67 @@ function insertWritingSettings(containerEl: HTMLElement, plugin: InkPlugin, refr
 		refresh();
 	}
 
+	const saveLinesPerPage = async (enteredValue: string) => {
+		const value = parseInt(enteredValue) || DEFAULT_SETTINGS.writingLinesPerPage;
+		plugin.settings.writingLinesPerPage = Math.max(3, Math.min(50, value));
+		await plugin.saveSettings();
+		refresh();
+	}
+
 	const sectionEl = containerEl.createDiv('ddc_ink_section ddc_ink_controls-section');
 	sectionEl.createEl('h2', { text: 'Writing' });
 	sectionEl.createEl('p', { text: `While editing a Markdown file, run the action 'Insert new handwriting section' to embed a section for writing with a stylus.` });
-	
+
+	new Setting(sectionEl)
+		.setClass('ddc_ink_setting')
+		.setClass('ddc_ink_button-set')
+		.setName('Writing mode')
+		.setDesc('Scroll mode gives an infinite vertical canvas. Pages mode splits writing into discrete notebook-style pages with fixed height.')
+		.addButton((button) => {
+			button.setButtonText('Scroll');
+			button.setClass('ddc_ink_left-most');
+			if (plugin.settings.writingPageMode === 'scroll') {
+				button.setCta();
+				button.setDisabled(true);
+			}
+			button.onClick(async () => {
+				plugin.settings.writingPageMode = 'scroll';
+				await plugin.saveSettings();
+				refresh();
+			});
+		})
+		.addButton((button) => {
+			button.setButtonText('Pages');
+			button.setClass('ddc_ink_right-most');
+			if (plugin.settings.writingPageMode === 'pages') {
+				button.setCta();
+				button.setDisabled(true);
+			}
+			button.onClick(async () => {
+				plugin.settings.writingPageMode = 'pages';
+				await plugin.saveSettings();
+				refresh();
+			});
+		});
+
+	if (plugin.settings.writingPageMode === 'pages') {
+		const linesPerPageSetting = new Setting(sectionEl)
+			.setClass('ddc_ink_setting')
+			.setName('Lines per page')
+			.setDesc('Number of ruled lines on each page (3-50). Default: 10.')
+			.addText((textItem) => {
+				textItem.setValue(plugin.settings.writingLinesPerPage.toString());
+				textItem.setPlaceholder(DEFAULT_SETTINGS.writingLinesPerPage.toString());
+				textItem.inputEl.addEventListener('blur', async (ev: FocusEvent) => {
+					saveLinesPerPage(textItem.getValue());
+				});
+				textItem.inputEl.addEventListener('keypress', async (ev: KeyboardEvent) => {
+					if (ev.key === 'Enter') saveLinesPerPage(textItem.getValue());
+				});
+			});
+		linesPerPageSetting.settingEl.classList.add('ddc_ink_input-medium');
+	}
+
 	new Setting(sectionEl)
 		.setClass('ddc_ink_setting')
 		.setName('Show ruled lines when not editing')

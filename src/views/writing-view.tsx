@@ -70,6 +70,7 @@ export class WritingView extends TextFileView {
                 saveControlsReference = {(controls: any) => {
                     this.tldrawControls.resize = controls.resize;
                 }}
+                onExitFocusMode = {this.focusModeActive ? () => this.disableFocusMode() : undefined}
 			/>
         );
     }
