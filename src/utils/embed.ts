@@ -43,6 +43,8 @@ export type NotebookEmbedData = {
 	versionAtEmbed: string;
 	filepath: string;
 	collapsed?: boolean;
+	title?: string;
+	currentPage?: number;
 };
 
 export const buildNotebookEmbed = (filepath: string) => {
@@ -68,6 +70,8 @@ export type DrawingEmbedData = {
 	filepath: string;
 	width?: number,
 	aspectRatio?: number,
+	collapsed?: boolean,
+	title?: string,
 };
 
 export const buildDrawingEmbed = (filepath: string) => {

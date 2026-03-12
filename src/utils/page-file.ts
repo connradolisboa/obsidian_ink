@@ -15,6 +15,7 @@ export type InkFileData = {
 	meta: Metadata;
 	tldraw: TLEditorSnapshot;
 	previewUri?: string;
+	pagePreviewUris?: string[];
 };
 
 // Primary functions
@@ -25,8 +26,9 @@ export const buildWritingFileData = (props: {
 	previewIsOutdated?: boolean;
 	transcript?: string;
 	previewUri?: string,
+	pagePreviewUris?: string[],
 }): InkFileData => {
-	
+
 	return buildFileData(props);
 }
 
@@ -44,12 +46,14 @@ const buildFileData = (props: {
 	previewIsOutdated?: boolean;
 	transcript?: string;
 	previewUri?: string,
+	pagePreviewUris?: string[],
 }): InkFileData => {
 
 	const {
 		tlEditorSnapshot: tlEditorSnapshot,
 		previewUri,
 		previewIsOutdated = false,
+		pagePreviewUris,
 	} = props;
 
 	let pageData: InkFileData = {
@@ -62,6 +66,7 @@ const buildFileData = (props: {
 
 	if(previewIsOutdated) pageData.meta.previewIsOutdated = previewIsOutdated;
 	if(previewUri) pageData.previewUri = previewUri;
+	if(pagePreviewUris) pageData.pagePreviewUris = pagePreviewUris;
 
 	return pageData;
 };

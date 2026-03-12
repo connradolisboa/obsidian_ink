@@ -1,2 +1,55 @@
 // Notebook embed inherits common embed styles from writing-embed.scss
 // Only notebook-specific overrides go here
+
+.ddc_ink_preview-page-nav {
+    position: absolute;
+    bottom: 4px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--background-primary);
+    border-radius: 8px;
+    padding: 2px 4px;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+    pointer-events: auto;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+
+    .ink_page-nav-button {
+        width: 2em;
+        height: 2em;
+        border-radius: 0.6em;
+        padding: 0 !important;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        pointer-events: auto;
+        cursor: pointer;
+
+        &:disabled {
+            opacity: 0.3;
+            pointer-events: none;
+        }
+
+        svg {
+            width: 1em !important;
+            height: 1em !important;
+            fill: currentColor;
+        }
+    }
+
+    .ink_page-indicator {
+        font-size: 0.75em;
+        min-width: 2.5em;
+        text-align: center;
+        user-select: none;
+        opacity: 0.8;
+    }
+}
+
+.ddc_ink_writing-embed-preview:hover .ddc_ink_preview-page-nav {
+    opacity: 1;
+}

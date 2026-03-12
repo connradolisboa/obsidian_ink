@@ -115,11 +115,20 @@ class DrawingEmbedWidget extends MarkdownRenderChild {
 					plugin = {this.plugin}
 					drawingFileRef = {this.fileRef}
 					pageData = {pageData}
+					embedData = {this.embedData}
 					saveSrcFile = {this.save}
 					setEmbedProps = {this.setEmbedProps}
 					remove = {this.embedCtrls.removeEmbed}
 					width = {this.embedData.width}
 					aspectRatio = {this.embedData.aspectRatio}
+					onCollapsedChange = {(collapsed: boolean) => {
+						const updatedData = { ...this.embedData, collapsed };
+						this.embedData = updatedData;
+						this.updateEmbed(updatedData);
+					}}
+					onTitleChange = {(title: string) => {
+						this.renameDrawingFile(title);
+					}}
 				/>
 			</JotaiProvider>
         );
@@ -147,6 +156,29 @@ class DrawingEmbedWidget extends MarkdownRenderChild {
 			aspectRatio,
 		}
 		this.updateEmbed(newEmbedData);
+	}
+
+	renameDrawingFile = async (title: string) => {
+		if(!this.fileRef) return;
+
+		const oldPath = this.fileRef.path;
+		const dir = oldPath.substring(0, oldPath.lastIndexOf('/'));
+		const ext = this.fileRef.extension;
+
+		const oldBasename = this.fileRef.basename;
+		const spaceIndex = oldBasename.indexOf(' ');
+		const datePart = spaceIndex >= 0 ? oldBasename.substring(0, spaceIndex) : oldBasename;
+
+		const newBasename = title ? `${datePart} ${title}` : datePart;
+		const newPath = `${dir}/${newBasename}.${ext}`;
+
+		if(newPath === oldPath) return;
+
+		await this.plugin.app.vault.rename(this.fileRef, newPath);
+
+		const updatedData = { ...this.embedData, filepath: newPath, title: title || undefined };
+		this.embedData = updatedData;
+		this.updateEmbed(updatedData);
 	}
 
 }

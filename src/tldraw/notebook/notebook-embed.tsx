@@ -52,6 +52,8 @@ export function NotebookEmbed (props: {
 	save: (pageData: InkFileData) => void,
 	remove: Function,
 	onCollapsedChange?: (collapsed: boolean) => void,
+	onTitleChange?: (title: string) => void,
+	onPageChange?: (pageIndex: number) => void,
 }) {
 	const embedContainerElRef = useRef<HTMLDivElement>(null);
 	const resizeContainerElRef = useRef<HTMLDivElement>(null);
@@ -59,10 +61,26 @@ export function NotebookEmbed (props: {
 
 	const setEmbedState = useSetAtom(notebookEmbedStateAtom);
 	const [collapsed, setCollapsed] = useState(props.embedData?.collapsed ?? false);
+	const [title, setTitle] = useState(props.embedData?.title ?? 'Notebook');
+	const [isEditingTitle, setIsEditingTitle] = useState(false);
+	const titleInputRef = useRef<HTMLInputElement>(null);
+	const [currentPage, setCurrentPage] = useState(props.embedData?.currentPage ?? 0);
 
 	function handleCollapsedChange(value: boolean) {
 		setCollapsed(value);
 		props.onCollapsedChange?.(value);
+	}
+
+	function handleTitleCommit(newTitle: string) {
+		const trimmed = newTitle.trim() || 'Notebook';
+		setTitle(trimmed);
+		setIsEditingTitle(false);
+		props.onTitleChange?.(trimmed === 'Notebook' ? '' : trimmed);
+	}
+
+	function handlePageChange(pageIndex: number) {
+		setCurrentPage(pageIndex);
+		props.onPageChange?.(pageIndex);
 	}
 
 	React.useEffect( () => {
@@ -111,7 +129,31 @@ export function NotebookEmbed (props: {
 		>
 			{collapsed && (
 				<div className="ddc_ink_collapsed-bar">
-					<span className="ddc_ink_collapsed-label">Notebook</span>
+					{isEditingTitle ? (
+						<input
+							ref={titleInputRef}
+							className="ddc_ink_collapsed-title-input"
+							defaultValue={title}
+							autoFocus
+							onBlur={(e) => handleTitleCommit(e.target.value)}
+							onKeyDown={(e) => {
+								if (e.key === 'Enter') handleTitleCommit((e.target as HTMLInputElement).value);
+								if (e.key === 'Escape') setIsEditingTitle(false);
+							}}
+							onPointerDown={(e) => e.stopPropagation()}
+						/>
+					) : (
+						<span
+							className="ddc_ink_collapsed-label"
+							onDoubleClick={(e) => {
+								e.stopPropagation();
+								setIsEditingTitle(true);
+							}}
+							title="Double-click to rename"
+						>
+							{title}
+						</span>
+					)}
 					<div className="ddc_ink_collapsed-bar-buttons">
 						<button
 							className="ddc_ink_collapse-btn"
@@ -149,6 +191,8 @@ export function NotebookEmbed (props: {
 						onClick = {async (event) => {
 							switchToEditMode();
 						}}
+						currentPage = {currentPage}
+						onPageChange = {handlePageChange}
 					/>
 
 					<TldrawNotebookEditorWrapper
@@ -157,9 +201,11 @@ export function NotebookEmbed (props: {
 						notebookFile = {props.notebookFileRef}
 						save = {props.save}
 						embedded
+						initialPage = {currentPage}
 						saveControlsReference = {registerEditorControls}
 						closeEditor = {saveAndSwitchToPreviewMode}
 						extendedMenu = {commonExtendedOptions}
+						onPageChange = {handlePageChange}
 					/>
 
 				</div>

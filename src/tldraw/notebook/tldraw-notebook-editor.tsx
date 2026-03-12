@@ -24,7 +24,7 @@ import { EreaderDrawShapeUtil, setEreaderStreamline } from '../ereader-draw-shap
 import { SecondaryMenuBar } from '../secondary-menu-bar/secondary-menu-bar';
 import ModifyMenu from '../modify-menu/modify-menu';
 import { PageNavigation } from '../page-navigation/page-navigation';
-import { createWritingPage, detectPageOverflow, getCurrentPageIndex, getPageCount, navigateToPage } from 'src/utils/writing-pages';
+import { createWritingPage, deleteWritingPage, detectPageOverflow, getCurrentPageIndex, getPageCount, navigateToPage } from 'src/utils/writing-pages';
 
 ///////
 ///////
@@ -35,12 +35,14 @@ interface TldrawNotebookEditorProps {
 	notebookFile: TFile,
 	save: (inkFileData: InkFileData) => void,
 	extendedMenu?: any[],
+	initialPage?: number,
 
 	// For embeds
 	embedded?: boolean,
 	resizeEmbedContainer?: (pxHeight: number) => void,
 	closeEditor?: Function,
 	saveControlsReference?: Function,
+	onPageChange?: (pageIndex: number) => void,
 
 	// For fullscreen focus mode
 	onExitFocusMode?: () => void,
@@ -79,6 +81,7 @@ export function TldrawNotebookEditor(props: TldrawNotebookEditorProps) {
 	const shortDelayPostProcessTimeoutRef = useRef<NodeJS.Timeout>();
 	const longDelayPostProcessTimeoutRef = useRef<NodeJS.Timeout>();
 	const tlEditorRef = useRef<Editor>();
+	const [mountedEditor, setMountedEditor] = React.useState<Editor>();
 	const editorWrapperRefEl = useRef<HTMLDivElement>(null);
 	const { stashStaleContent, unstashStaleContent } = useStash(props.plugin);
 	const cameraLimitsRef = useRef<WritingCameraLimits>();
@@ -112,8 +115,17 @@ export function TldrawNotebookEditor(props: TldrawNotebookEditorProps) {
 
 	const handleMount = (_editor: Editor) => {
 		const editor = tlEditorRef.current = _editor;
+		setMountedEditor(editor);
 		setEmbedState(NotebookEmbedState.editor);
 		focusChildTldrawEditor(editorWrapperRefEl.current);
+
+		// Navigate to persisted page if specified
+		if (props.initialPage !== undefined && props.initialPage > 0) {
+			const pageCount = getPageCount(editor);
+			if (props.initialPage < pageCount) {
+				navigateToPage(editor, props.initialPage, props.embedded ? 0 : MENUBAR_HEIGHT_PX);
+			}
+		}
 
 		const ereader = isEreader();
 		const stylusOnly = props.plugin.settings.stylusOnlyInput || ereader;
@@ -311,46 +323,39 @@ export function TldrawNotebookEditor(props: TldrawNotebookEditorProps) {
 
 	const completeSave = async (editor: Editor): Promise<void> => {
 		verbose('notebook completeSave');
-		let previewUri;
 
 		unstashStaleContent(editor);
 
-		// Switch to page 0 for preview generation, then switch back
 		const currentPageId = editor.getCurrentPageId();
 		const pages = editor.getPages();
-		if (pages.length > 1) {
+		const pagePreviewUris: string[] = [];
+
+		// Generate preview for each page
+		for (let i = 0; i < pages.length; i++) {
 			silentlyChangeStore(editor, () => {
-				editor.setCurrentPage(pages[0].id);
+				editor.setCurrentPage(pages[i].id);
 			});
+			const svgObj = await getWritingSvg(editor);
+			pagePreviewUris.push(svgObj?.svg ?? '');
 		}
+
+		// Restore current page
+		silentlyChangeStore(editor, () => {
+			editor.setCurrentPage(currentPageId);
+		});
 
 		const tlEditorSnapshot = getSnapshot(editor.store);
-		const svgObj = await getWritingSvg(editor);
-
-		if (pages.length > 1) {
-			silentlyChangeStore(editor, () => {
-				editor.setCurrentPage(currentPageId);
-			});
-		}
-
 		stashStaleContent(editor);
 
-		if (svgObj) {
-			previewUri = svgObj.svg;
-		}
+		// Use first page as the main preview for backwards compat
+		const previewUri = pagePreviewUris[0] || undefined;
 
-		if(previewUri) {
-			const pageData = buildWritingFileData({
-				tlEditorSnapshot: tlEditorSnapshot,
-				previewUri,
-			})
-			props.save(pageData);
-		} else {
-			const pageData = buildWritingFileData({
-				tlEditorSnapshot: tlEditorSnapshot,
-			})
-			props.save(pageData);
-		}
+		const pageData = buildWritingFileData({
+			tlEditorSnapshot,
+			previewUri,
+			pagePreviewUris: pagePreviewUris.length > 1 ? pagePreviewUris : undefined,
+		});
+		props.save(pageData);
 
 		return;
 	}
@@ -397,7 +402,22 @@ export function TldrawNotebookEditor(props: TldrawNotebookEditorProps) {
 						onLockClick = { async () => {
 							if(props.closeEditor) props.closeEditor();
 						}}
-						menuOptions = {props.extendedMenu}
+						menuOptions = {[
+							...(props.extendedMenu || []),
+							{
+								text: 'Delete page',
+								action: () => {
+									const editor = tlEditorRef.current;
+									if (!editor) return;
+									const pageCount = getPageCount(editor);
+									if (pageCount <= 1) return;
+									const currentIndex = getCurrentPageIndex(editor);
+									deleteWritingPage(editor, currentIndex, props.embedded ? 0 : MENUBAR_HEIGHT_PX);
+									queueOrRunStorePostProcesses(editor);
+									props.onPageChange?.(getCurrentPageIndex(editor));
+								},
+							},
+						]}
 					/>
 				)}
 				{!props.embedded && props.onExitFocusMode && (
@@ -423,22 +443,16 @@ export function TldrawNotebookEditor(props: TldrawNotebookEditorProps) {
 					onStoreChange = {(tlEditor: Editor) => queueOrRunStorePostProcesses(tlEditor)}
 				/>
 				<PageNavigation
-					getTlEditor = {getTlEditor}
+					editor = {mountedEditor}
 					linesPerPage = {linesPerPage}
 					topMarginPx = {props.embedded ? 0 : MENUBAR_HEIGHT_PX}
-					allowDelete = {true}
-					onPageChange = {() => {
+					onPageChange = {(pageIndex: number) => {
 						const editor = tlEditorRef.current;
 						if (editor) {
 							unstashStaleContent(editor);
 							resizeContainerIfEmbed(editor);
 						}
-					}}
-					onPageDeleted = {() => {
-						const editor = tlEditorRef.current;
-						if (editor) {
-							queueOrRunStorePostProcesses(editor);
-						}
+						props.onPageChange?.(pageIndex);
 					}}
 				/>
 			</SecondaryMenuBar>

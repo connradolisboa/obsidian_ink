@@ -93,6 +93,14 @@ class NotebookEmbedWidget extends MarkdownRenderChild {
 						this.embedData = updatedData;
 						this.embedCtrls.updateEmbedData(updatedData);
 					}}
+					onTitleChange = {(title: string) => {
+						this.renameNotebookFile(title);
+					}}
+					onPageChange = {(pageIndex: number) => {
+						const updatedData = { ...this.embedData, currentPage: pageIndex };
+						this.embedData = updatedData;
+						this.embedCtrls.updateEmbedData(updatedData);
+					}}
 				/>
 			</JotaiProvider>
 		);
@@ -108,6 +116,29 @@ class NotebookEmbedWidget extends MarkdownRenderChild {
 		if(!this.fileRef) return;
 		const pageDataStr = stringifyPageData(pageData);
 		await this.plugin.app.vault.modify(this.fileRef, pageDataStr);
+	}
+
+	renameNotebookFile = async (title: string) => {
+		if(!this.fileRef) return;
+
+		const oldPath = this.fileRef.path;
+		const dir = oldPath.substring(0, oldPath.lastIndexOf('/'));
+		const ext = this.fileRef.extension;
+
+		const oldBasename = this.fileRef.basename;
+		const spaceIndex = oldBasename.indexOf(' ');
+		const datePart = spaceIndex >= 0 ? oldBasename.substring(0, spaceIndex) : oldBasename;
+
+		const newBasename = title ? `${datePart} ${title}` : datePart;
+		const newPath = `${dir}/${newBasename}.${ext}`;
+
+		if(newPath === oldPath) return;
+
+		await this.plugin.app.vault.rename(this.fileRef, newPath);
+
+		const updatedData = { ...this.embedData, filepath: newPath, title: title || undefined };
+		this.embedData = updatedData;
+		this.embedCtrls.updateEmbedData(updatedData);
 	}
 
 }

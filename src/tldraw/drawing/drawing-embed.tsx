@@ -11,6 +11,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { DrawingEmbedPreview, DrawingEmbedPreviewWrapper } from "./drawing-embed-preview/drawing-embed-preview";
 import { openInkFile } from "src/utils/open-file";
 import { nanoid } from "nanoid";
+import { DrawingEmbedData } from "src/utils/embed";
 import { embedShouldActivateImmediately } from "src/utils/storage";
 import classNames from "classnames";
 import { atom, useAtom, useSetAtom } from "jotai";
@@ -19,6 +20,7 @@ import { getFullPageWidth } from "src/utils/getFullPageWidth";
 import { verbose } from "src/utils/log-to-console";
 import { CollapseIcon } from "src/graphics/icons/collapse-icon";
 import { ExpandIcon } from "src/graphics/icons/expand-icon";
+import { FullscreenIcon } from "src/graphics/icons/fullscreen-icon";
 const emptyDrawingSvgStr = require('../../placeholders/empty-drawing-embed.svg');
 
 ///////
@@ -52,34 +54,47 @@ export function DrawingEmbed (props: {
 	plugin: InkPlugin,
 	drawingFileRef: TFile,
 	pageData: InkFileData,
+	embedData?: DrawingEmbedData,
 	saveSrcFile: (pageData: InkFileData) => {},
 	setEmbedProps: (width: number, height: number) => void,
 	remove: Function,
 	width?: number,
 	aspectRatio?: number,
+	onCollapsedChange?: (collapsed: boolean) => void,
+	onTitleChange?: (title: string) => void,
 }) {
 	const embedContainerElRef = useRef<HTMLDivElement>(null);
 	const resizeContainerElRef = useRef<HTMLDivElement>(null);
 	const editorControlsRef = useRef<DrawingEditorControls>();
 	const embedWidthRef = useRef<number>(props.width || DRAWING_INITIAL_WIDTH);
 	const embedAspectRatioRef = useRef<number>(props.aspectRatio || DRAWING_INITIAL_ASPECT_RATIO);
-	// const previewFilePath = getPreviewFileResourcePath(props.plugin, props.fileRef)
-	// const [embedId] = useState<string>(nanoid());
-	// const activeEmbedId = useSelector((state: GlobalSessionState) => state.activeEmbedId);
-	// const dispatch = useDispatch();
 
 	const setEmbedState = useSetAtom(embedStateAtom);
-	const [collapsed, setCollapsed] = useState(false);
+	const [collapsed, setCollapsed] = useState(props.embedData?.collapsed ?? false);
+	const [title, setTitle] = useState(props.embedData?.title ?? 'Drawing');
+	const [isEditingTitle, setIsEditingTitle] = useState(false);
+	const titleInputRef = useRef<HTMLInputElement>(null);
+
+	function handleCollapsedChange(value: boolean) {
+		setCollapsed(value);
+		props.onCollapsedChange?.(value);
+	}
+
+	function handleTitleCommit(newTitle: string) {
+		const trimmed = newTitle.trim() || 'Drawing';
+		setTitle(trimmed);
+		setIsEditingTitle(false);
+		props.onTitleChange?.(trimmed === 'Drawing' ? '' : trimmed);
+	}
 
 	// On first mount
 	React.useEffect( () => {
 		if(embedShouldActivateImmediately()) {
-			// dispatch({ type: 'global-session/setActiveEmbedId', payload: embedId })
 			setTimeout( () => {
 				switchToEditMode();
 			},200);
 		}
-		
+
 		window.addEventListener('resize', handleResize);
 		handleResize();
 
@@ -87,11 +102,6 @@ export function DrawingEmbed (props: {
 			window.removeEventListener('resize', handleResize);
 		}
 	}, [])
-
-	// let isActive = (embedId === activeEmbedId);
-	// if(!isActive && state === 'edit') {
-	// 	saveAndSwitchToPreviewMode();
-	// }
 
 	const commonExtendedOptions = [
 		{
@@ -132,14 +142,50 @@ export function DrawingEmbed (props: {
 		>
 			{collapsed && (
 				<div className="ddc_ink_collapsed-bar">
-					<span className="ddc_ink_collapsed-label">Drawing</span>
-					<button
-						className="ddc_ink_collapse-btn"
-						onPointerDown={() => setCollapsed(false)}
-						aria-label="Expand embed"
-					>
-						<ExpandIcon />
-					</button>
+					{isEditingTitle ? (
+						<input
+							ref={titleInputRef}
+							className="ddc_ink_collapsed-title-input"
+							defaultValue={title}
+							autoFocus
+							onBlur={(e) => handleTitleCommit(e.target.value)}
+							onKeyDown={(e) => {
+								if (e.key === 'Enter') handleTitleCommit((e.target as HTMLInputElement).value);
+								if (e.key === 'Escape') setIsEditingTitle(false);
+							}}
+							onPointerDown={(e) => e.stopPropagation()}
+						/>
+					) : (
+						<span
+							className="ddc_ink_collapsed-label"
+							onDoubleClick={(e) => {
+								e.stopPropagation();
+								setIsEditingTitle(true);
+							}}
+							title="Double-click to rename"
+						>
+							{title}
+						</span>
+					)}
+					<div className="ddc_ink_collapsed-bar-buttons">
+						<button
+							className="ddc_ink_collapse-btn"
+							onPointerDown={(e) => {
+								e.stopPropagation();
+								openInkFile(props.plugin, props.drawingFileRef);
+							}}
+							aria-label="Open fullscreen"
+						>
+							<FullscreenIcon />
+						</button>
+						<button
+							className="ddc_ink_collapse-btn"
+							onPointerDown={() => handleCollapsedChange(false)}
+							aria-label="Expand embed"
+						>
+							<ExpandIcon />
+						</button>
+					</div>
 				</div>
 			)}
 
@@ -161,9 +207,9 @@ export function DrawingEmbed (props: {
 						plugin = {props.plugin}
 						onReady = {() => {}}
 						drawingFile = {props.drawingFileRef}
-						onCollapseClick = {() => setCollapsed(true)}
+						onCollapseClick = {() => handleCollapsedChange(true)}
+						onFullscreenClick = {() => openInkFile(props.plugin, props.drawingFileRef)}
 						onClick = { async () => {
-							// dispatch({ type: 'global-session/setActiveEmbedId', payload: embedId })
 							switchToEditMode();
 						}}
 					/>
@@ -201,7 +247,7 @@ export function DrawingEmbed (props: {
 		let destWidth = embedWidthRef.current + pxWidthDiff;
 		if(destWidth < 350) destWidth = 350;
 		if(destWidth > maxWidth) destWidth = maxWidth;
-		
+
 		const curHeight = resizeContainerElRef.current.getBoundingClientRect().height;
 		let destHeight = curHeight + pxHeightDiff;
 		if(destHeight < 150) destHeight = 150;
@@ -210,7 +256,6 @@ export function DrawingEmbed (props: {
 		embedAspectRatioRef.current = destWidth / destHeight;
 		resizeContainerElRef.current.style.width = embedWidthRef.current + 'px';
 		resizeContainerElRef.current.style.height = destHeight + 'px';
-		// props.setEmbedProps(embedHeightRef.current); // NOTE: Can't do this here because it causes the embed to reload
 	}
 	function applyEmbedHeight() {
 		if(!resizeContainerElRef.current) return;
@@ -218,16 +263,6 @@ export function DrawingEmbed (props: {
 		const curWidth = resizeContainerElRef.current.getBoundingClientRect().width;
 		resizeContainerElRef.current.style.height = curWidth/embedAspectRatioRef.current + 'px';
 	}
-
-	// function resetEmbedHeight() {
-	// 	if(!embedContainerElRef.current) return;
-	// 	const newHeight = embedContainerElRef.current?.offsetHeight;
-	// 	if(newHeight) {
-	// 		embedContainerElRef.current.style.height = newHeight + 'px';
-	// 	} else {
-	// 		embedContainerElRef.current.style.height = 'unset'; // TODO: CSS transition doesn't work between number and unset
-	// 	}
-	// }
 
 	function switchToEditMode() {
 		verbose('Set DrawingEmbedState: loadingEditor')
@@ -241,7 +276,7 @@ export function DrawingEmbed (props: {
 		if(editorControlsRef.current) {
 			await editorControlsRef.current.saveAndHalt();
 		}
-		
+
 		setEmbedState(DrawingEmbedState.loadingPreview);
 		props.setEmbedProps(embedWidthRef.current, embedAspectRatioRef.current);
 	}

@@ -1,18 +1,17 @@
 import * as React from 'react';
 import './page-navigation.scss';
 import { Editor } from '@tldraw/tldraw';
-import { getCurrentPageIndex, getPageCount, navigateToNextPage, navigateToPrevPage, createWritingPage, deleteWritingPage } from 'src/utils/writing-pages';
+import { getCurrentPageIndex, getPageCount, navigateToNextPage, navigateToPrevPage, createWritingPage } from 'src/utils/writing-pages';
 
 ///////////
 ///////////
 
 interface PageNavigationProps {
-	getTlEditor: () => Editor | undefined;
+	editor?: Editor;
 	linesPerPage: number;
 	topMarginPx?: number;
-	allowDelete?: boolean;
-	onPageChange?: () => void;
-	onPageDeleted?: () => void;
+	readOnly?: boolean;
+	onPageChange?: (pageIndex: number) => void;
 }
 
 export const PageNavigation: React.FC<PageNavigationProps> = (props) => {
@@ -20,79 +19,55 @@ export const PageNavigation: React.FC<PageNavigationProps> = (props) => {
 	const [totalPages, setTotalPages] = React.useState(1);
 
 	const syncPageState = React.useCallback(() => {
-		const editor = props.getTlEditor();
-		if (!editor) return;
-		setCurrentPage(getCurrentPageIndex(editor));
-		setTotalPages(getPageCount(editor));
-	}, [props.getTlEditor]);
+		if (!props.editor) return;
+		setCurrentPage(getCurrentPageIndex(props.editor));
+		setTotalPages(getPageCount(props.editor));
+	}, [props.editor]);
 
 	React.useEffect(() => {
+		if (!props.editor) return;
 		syncPageState();
-		const editor = props.getTlEditor();
-		if (!editor) return;
-		const unsub = editor.store.listen(() => {
-			const newIndex = getCurrentPageIndex(editor);
-			const newCount = getPageCount(editor);
-			if (newIndex !== currentPage || newCount !== totalPages) {
-				setCurrentPage(newIndex);
-				setTotalPages(newCount);
-			}
+		const unsub = props.editor.store.listen(() => {
+			if (!props.editor) return;
+			setCurrentPage(getCurrentPageIndex(props.editor));
+			setTotalPages(getPageCount(props.editor));
 		}, { source: 'all', scope: 'all' });
 		return unsub;
-	}, [props.getTlEditor]);
+	}, [props.editor]);
 
 	function handlePrev(e: React.PointerEvent) {
 		e.preventDefault();
 		e.stopPropagation();
-		const editor = props.getTlEditor();
-		if (!editor) return;
-		if (navigateToPrevPage(editor, props.topMarginPx)) {
+		if (!props.editor) return;
+		if (navigateToPrevPage(props.editor, props.topMarginPx)) {
 			syncPageState();
-			props.onPageChange?.();
+			props.onPageChange?.(getCurrentPageIndex(props.editor));
 		}
 	}
 
 	function handleNext(e: React.PointerEvent) {
 		e.preventDefault();
 		e.stopPropagation();
-		const editor = props.getTlEditor();
-		if (!editor) return;
-		if (navigateToNextPage(editor, props.topMarginPx)) {
+		if (!props.editor) return;
+		if (navigateToNextPage(props.editor, props.topMarginPx)) {
 			syncPageState();
-			props.onPageChange?.();
+			props.onPageChange?.(getCurrentPageIndex(props.editor));
 		}
 	}
 
 	function handleAddPage(e: React.PointerEvent) {
 		e.preventDefault();
 		e.stopPropagation();
-		const editor = props.getTlEditor();
-		if (!editor) return;
-		const newPageIndex = getPageCount(editor);
-		createWritingPage(editor, newPageIndex, props.linesPerPage);
-		navigateToNextPage(editor, props.topMarginPx);
+		if (!props.editor) return;
+		const newPageIndex = getPageCount(props.editor);
+		createWritingPage(props.editor, newPageIndex, props.linesPerPage);
+		navigateToNextPage(props.editor, props.topMarginPx);
 		syncPageState();
-		props.onPageChange?.();
-	}
-
-	function handleDeletePage(e: React.PointerEvent) {
-		e.preventDefault();
-		e.stopPropagation();
-		const editor = props.getTlEditor();
-		if (!editor) return;
-		const pageCount = getPageCount(editor);
-		if (pageCount <= 1) return;
-
-		const currentIndex = getCurrentPageIndex(editor);
-		deleteWritingPage(editor, currentIndex, props.topMarginPx);
-		syncPageState();
-		props.onPageChange?.();
-		props.onPageDeleted?.();
+		props.onPageChange?.(getCurrentPageIndex(props.editor));
 	}
 
 	const isFirstPage = currentPage === 0;
 	const isLastPage = currentPage === totalPages - 1;
-	const canDelete = props.allowDelete && totalPages > 1;
 
 	return (
 		<div className="ink_page-navigation">
@@ -111,7 +86,7 @@ export const PageNavigation: React.FC<PageNavigationProps> = (props) => {
 				{currentPage + 1} / {totalPages}
 			</span>
 
-			{isLastPage ? (
+			{isLastPage && !props.readOnly ? (
 				<button
 					className="ink_page-nav-button ink_page-add-button"
 					onPointerDown={handleAddPage}
@@ -126,21 +101,10 @@ export const PageNavigation: React.FC<PageNavigationProps> = (props) => {
 					className="ink_page-nav-button"
 					onPointerDown={handleNext}
 					aria-label="Next page"
+					disabled={isLastPage}
 				>
 					<svg xmlns="http://www.w3.org/2000/svg" height={20} viewBox="0 -960 960 960" width={20}>
 						<path d="M504-480 320-664l56-56 240 240-240 240-56-56 184-184Z" />
-					</svg>
-				</button>
-			)}
-
-			{canDelete && (
-				<button
-					className="ink_page-nav-button ink_page-delete-button"
-					onPointerDown={handleDeletePage}
-					aria-label="Delete current page"
-				>
-					<svg xmlns="http://www.w3.org/2000/svg" height={20} viewBox="0 -960 960 960" width={20}>
-						<path d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM360-280h80v-360h-80v360Zm160 0h80v-360h-80v360ZM280-720v520-520Z" />
 					</svg>
 				</button>
 			)}
