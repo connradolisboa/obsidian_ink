@@ -31,6 +31,20 @@
         font-size: 13px;
         color: var(--text-muted);
         font-style: italic;
+        cursor: text;
+    }
+
+    .ddc_ink_collapsed-title-input {
+        font-size: 13px;
+        color: var(--text-muted);
+        font-style: italic;
+        background: transparent;
+        border: none;
+        border-bottom: 1px solid var(--text-muted);
+        outline: none;
+        padding: 0;
+        margin: 0;
+        font-family: inherit;
     }
 }
 

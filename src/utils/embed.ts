@@ -11,6 +11,7 @@ export type WritingEmbedData = {
 	filepath: string;
 	transcript?: string;
 	collapsed?: boolean;
+	title?: string;
 };
 
 

@@ -58,6 +58,7 @@ export function WritingEmbed (props: {
 	save: (pageData: InkFileData) => void,
 	remove: Function,
 	onCollapsedChange?: (collapsed: boolean) => void,
+	onTitleChange?: (title: string) => void,
 }) {
 	const embedContainerElRef = useRef<HTMLDivElement>(null);
 	const resizeContainerElRef = useRef<HTMLDivElement>(null);
@@ -69,10 +70,20 @@ export function WritingEmbed (props: {
 
 	const setEmbedState = useSetAtom(embedStateAtom);
 	const [collapsed, setCollapsed] = useState(props.embedData?.collapsed ?? false);
+	const [title, setTitle] = useState(props.embedData?.title ?? 'Writing');
+	const [isEditingTitle, setIsEditingTitle] = useState(false);
+	const titleInputRef = useRef<HTMLInputElement>(null);
 
 	function handleCollapsedChange(value: boolean) {
 		setCollapsed(value);
 		props.onCollapsedChange?.(value);
+	}
+
+	function handleTitleCommit(newTitle: string) {
+		const trimmed = newTitle.trim() || 'Writing';
+		setTitle(trimmed);
+		setIsEditingTitle(false);
+		props.onTitleChange?.(trimmed === 'Writing' ? '' : trimmed);
 	}
 
 	// On first mount
@@ -137,7 +148,31 @@ export function WritingEmbed (props: {
 		>
 			{collapsed && (
 				<div className="ddc_ink_collapsed-bar">
-					<span className="ddc_ink_collapsed-label">Writing</span>
+					{isEditingTitle ? (
+						<input
+							ref={titleInputRef}
+							className="ddc_ink_collapsed-title-input"
+							defaultValue={title}
+							autoFocus
+							onBlur={(e) => handleTitleCommit(e.target.value)}
+							onKeyDown={(e) => {
+								if (e.key === 'Enter') handleTitleCommit((e.target as HTMLInputElement).value);
+								if (e.key === 'Escape') setIsEditingTitle(false);
+							}}
+							onPointerDown={(e) => e.stopPropagation()}
+						/>
+					) : (
+						<span
+							className="ddc_ink_collapsed-label"
+							onDoubleClick={(e) => {
+								e.stopPropagation();
+								setIsEditingTitle(true);
+							}}
+							title="Double-click to rename"
+						>
+							{title}
+						</span>
+					)}
 					<div className="ddc_ink_collapsed-bar-buttons">
 						<button
 							className="ddc_ink_collapse-btn"
