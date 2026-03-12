@@ -130,7 +130,7 @@ export function preventTldrawCanvasesCausingObsidianGestures(tlEditor: Editor, o
 			if (e.pointerType === 'pen') penIsActive = false;
 		}, { capture: true });
 
-		// Allow finger swipe to scroll the page (via .cm-scroller container)
+		// Allow finger swipe to scroll the page
 		// Skip scrolling when the stylus is active (Boox stylus fires touch events too)
 		if (options?.fingerSwipeScroll) {
 			let touchStartY: number | null = null;
@@ -140,11 +140,22 @@ export function preventTldrawCanvasesCausingObsidianGestures(tlEditor: Editor, o
 			}, { passive: true });
 			tlCanvas.addEventListener('touchmove', (e: TouchEvent) => {
 				if (penIsActive || touchStartY === null) return;
-				const scrollContainer = tlCanvas.closest('.cm-scroller') as HTMLElement;
-				if (!scrollContainer) return;
 				const deltaY = touchStartY - e.touches[0].clientY;
-				scrollContainer.scrollBy(0, deltaY);
 				touchStartY = e.touches[0].clientY;
+
+				// In embed mode, scroll the DOM container
+				const scrollContainer = tlCanvas.closest('.cm-scroller') as HTMLElement;
+				if (scrollContainer) {
+					scrollContainer.scrollBy(0, deltaY);
+					return;
+				}
+
+				// In fullscreen mode, move the tldraw camera
+				const camera = tlEditor.getCamera();
+				const zoom = camera.z || 1;
+				silentlyChangeStore(tlEditor, () => {
+					tlEditor.setCamera({ x: camera.x, y: camera.y - deltaY / zoom, z: camera.z });
+				});
 			}, { passive: true });
 			tlCanvas.addEventListener('touchend', () => {
 				touchStartY = null;
