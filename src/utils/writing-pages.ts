@@ -83,6 +83,7 @@ export function getCurrentPageIndex(editor: Editor): number {
 
 /**
  * Navigate to a specific page by index and reinitialize the camera.
+ * Uses requestAnimationFrame to ensure the page switch is fully rendered before setting camera.
  */
 export function navigateToPage(editor: Editor, pageIndex: number, topMarginPx: number = 0) {
 	const pages = editor.getPages();
@@ -92,7 +93,12 @@ export function navigateToPage(editor: Editor, pageIndex: number, topMarginPx: n
 	silentlyChangeStore(editor, () => {
 		editor.setCurrentPage(targetPage.id);
 	});
+	// Initialize camera immediately
 	initWritingCamera(editor, topMarginPx);
+	// Re-initialize after layout settles to fix zoom/position issues
+	requestAnimationFrame(() => {
+		initWritingCamera(editor, topMarginPx);
+	});
 }
 
 /**
@@ -118,6 +124,39 @@ export function navigateToPrevPage(editor: Editor, topMarginPx: number = 0): boo
 		return true;
 	}
 	return false;
+}
+
+/**
+ * Delete a page by index and navigate to an adjacent page.
+ * Cannot delete the last remaining page.
+ */
+export function deleteWritingPage(editor: Editor, pageIndex: number, topMarginPx: number = 0) {
+	const pages = editor.getPages();
+	if (pages.length <= 1) return; // Don't delete the last page
+
+	if (pageIndex < 0 || pageIndex >= pages.length) return;
+
+	const pageToDelete = pages[pageIndex];
+	// Navigate to previous page if possible, otherwise next
+	const targetIndex = pageIndex > 0 ? pageIndex - 1 : 0;
+
+	// First navigate away from the page we're about to delete
+	if (pageIndex === targetIndex) {
+		// We're deleting page 0 and there's a page 1 — go to page 1 (which becomes page 0 after delete)
+		navigateToPage(editor, 1, topMarginPx);
+	} else {
+		navigateToPage(editor, targetIndex, topMarginPx);
+	}
+
+	// Now delete the page
+	silentlyChangeStore(editor, () => {
+		editor.deletePage(pageToDelete.id);
+	});
+
+	// Re-init camera after deletion
+	requestAnimationFrame(() => {
+		initWritingCamera(editor, topMarginPx);
+	});
 }
 
 /**

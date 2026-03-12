@@ -1,0 +1,68 @@
+@use '../tldraw-defaults.scss';
+
+/////////
+/////////
+
+.ddc_ink_notebook-editor {
+    transition: height 0.5s ease;
+
+    &.ddc_ink_ereader-mode {
+        transition: none;
+
+        .tl-container,
+        .tl-container * {
+            transition: none !important;
+            animation: none !important;
+        }
+    }
+
+    .tl-container {
+        outline: none !important;
+
+        .tl-canvas {
+            background: none;
+
+            overflow: hidden;
+
+            .tl-background {
+                background: none;
+            }
+
+        }
+    }
+}
+
+.ddc_ink_notebook-editor {
+    outline: solid 8px var(--color-base-10);
+    border-radius: 20px;
+
+    background-color: var(--color-base-05);
+
+    line {
+        stroke: var(--color-base-50);
+        stroke-width: 2px;
+    }
+}
+
+.ink_exit-focus-mode-button {
+    width: 2.5em;
+    height: 2.5em;
+    border-radius: 0.8em;
+    padding: 0 !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: auto;
+    opacity: 0.5;
+    margin-left: auto;
+
+    &:hover {
+        opacity: 1;
+    }
+
+    svg {
+        width: 1.2em !important;
+        height: 1.2em !important;
+        fill: currentColor;
+    }
+}

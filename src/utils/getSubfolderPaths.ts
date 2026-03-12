@@ -18,3 +18,10 @@ export const getDrawingSubfolderPath = (plugin: InkPlugin): string => {
     }
     return subFolderPath.trim();
 };
+export const getNotebookSubfolderPath = (plugin: InkPlugin): string => {
+    let subFolderPath = DEFAULT_SETTINGS.notebookSubfolder;
+    if (plugin.settings.customAttachmentFolders) {
+        subFolderPath = plugin.settings.notebookSubfolder || '';
+    }
+    return subFolderPath.trim();
+};

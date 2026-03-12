@@ -1,8 +1,7 @@
 import * as React from 'react';
 import './page-navigation.scss';
 import { Editor } from '@tldraw/tldraw';
-import { getCurrentPageIndex, getPageCount, navigateToNextPage, navigateToPrevPage, createWritingPage } from 'src/utils/writing-pages';
-import { WRITING_LINE_HEIGHT } from 'src/constants';
+import { getCurrentPageIndex, getPageCount, navigateToNextPage, navigateToPrevPage, createWritingPage, deleteWritingPage } from 'src/utils/writing-pages';
 
 ///////////
 ///////////
@@ -11,14 +10,15 @@ interface PageNavigationProps {
 	getTlEditor: () => Editor | undefined;
 	linesPerPage: number;
 	topMarginPx?: number;
+	allowDelete?: boolean;
 	onPageChange?: () => void;
+	onPageDeleted?: () => void;
 }
 
 export const PageNavigation: React.FC<PageNavigationProps> = (props) => {
 	const [currentPage, setCurrentPage] = React.useState(0);
 	const [totalPages, setTotalPages] = React.useState(1);
 
-	// Sync state with editor on mount and after navigation
 	const syncPageState = React.useCallback(() => {
 		const editor = props.getTlEditor();
 		if (!editor) return;
@@ -28,7 +28,6 @@ export const PageNavigation: React.FC<PageNavigationProps> = (props) => {
 
 	React.useEffect(() => {
 		syncPageState();
-		// Listen for page changes from the editor
 		const editor = props.getTlEditor();
 		if (!editor) return;
 		const unsub = editor.store.listen(() => {
@@ -76,8 +75,24 @@ export const PageNavigation: React.FC<PageNavigationProps> = (props) => {
 		props.onPageChange?.();
 	}
 
+	function handleDeletePage(e: React.PointerEvent) {
+		e.preventDefault();
+		e.stopPropagation();
+		const editor = props.getTlEditor();
+		if (!editor) return;
+		const pageCount = getPageCount(editor);
+		if (pageCount <= 1) return;
+
+		const currentIndex = getCurrentPageIndex(editor);
+		deleteWritingPage(editor, currentIndex, props.topMarginPx);
+		syncPageState();
+		props.onPageChange?.();
+		props.onPageDeleted?.();
+	}
+
 	const isFirstPage = currentPage === 0;
 	const isLastPage = currentPage === totalPages - 1;
+	const canDelete = props.allowDelete && totalPages > 1;
 
 	return (
 		<div className="ink_page-navigation">
@@ -87,7 +102,6 @@ export const PageNavigation: React.FC<PageNavigationProps> = (props) => {
 				aria-label="Previous page"
 				disabled={isFirstPage}
 			>
-				{/* Chevron left — Material Symbols Rounded */}
 				<svg xmlns="http://www.w3.org/2000/svg" height={20} viewBox="0 -960 960 960" width={20}>
 					<path d="M560-240 320-480l240-240 56 56-184 184 184 184-56 56Z" />
 				</svg>
@@ -103,7 +117,6 @@ export const PageNavigation: React.FC<PageNavigationProps> = (props) => {
 					onPointerDown={handleAddPage}
 					aria-label="Add page"
 				>
-					{/* Add — Material Symbols Rounded */}
 					<svg xmlns="http://www.w3.org/2000/svg" height={20} viewBox="0 -960 960 960" width={20}>
 						<path d="M440-440H200v-80h240v-240h80v240h240v80H520v240h-80v-240Z" />
 					</svg>
@@ -114,9 +127,20 @@ export const PageNavigation: React.FC<PageNavigationProps> = (props) => {
 					onPointerDown={handleNext}
 					aria-label="Next page"
 				>
-					{/* Chevron right — Material Symbols Rounded */}
 					<svg xmlns="http://www.w3.org/2000/svg" height={20} viewBox="0 -960 960 960" width={20}>
 						<path d="M504-480 320-664l56-56 240 240-240 240-56-56 184-184Z" />
+					</svg>
+				</button>
+			)}
+
+			{canDelete && (
+				<button
+					className="ink_page-nav-button ink_page-delete-button"
+					onPointerDown={handleDeletePage}
+					aria-label="Delete current page"
+				>
+					<svg xmlns="http://www.w3.org/2000/svg" height={20} viewBox="0 -960 960 960" width={20}>
+						<path d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520ZM360-280h80v-360h-80v360Zm160 0h80v-360h-80v360ZM280-720v520-520Z" />
 					</svg>
 				</button>
 			)}

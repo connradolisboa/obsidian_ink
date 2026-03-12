@@ -41,6 +41,7 @@ export class MySettingsTab extends PluginSettingTab {
 
 		containerEl.createEl('hr');
 		if(this.plugin.settings.writingEnabled)	insertWritingSettings(containerEl, this.plugin, () => this.display());
+		if(this.plugin.settings.notebookEnabled)	insertNotebookSettings(containerEl, this.plugin, () => this.display());
 		if(this.plugin.settings.drawingEnabled)	insertDrawingSettings(containerEl, this.plugin, () => this.display());
 	
 		new Setting(containerEl)
@@ -134,6 +135,19 @@ function insertHighLevelSettings(containerEl: HTMLElement, plugin: InkPlugin, re
 
 	new Setting(containerEl)
 		.setClass('ddc_ink_setting')
+		.setName('Enable notebook')
+		.setDesc('Notebook mode provides page-based writing with fixed-height pages and page navigation. Changing this setting will require a restart of Obsidian to take effect.')
+		.addToggle((toggle) => {
+			toggle.setValue(plugin.settings.notebookEnabled);
+			toggle.onChange(async (value) => {
+				plugin.settings.notebookEnabled = value;
+				await plugin.saveSettings();
+				refresh();
+			});
+		});
+
+	new Setting(containerEl)
+		.setClass('ddc_ink_setting')
 		.setName('Enable drawing')
 		// .setDesc('If disabled, you will still be able to view previously created drawing embeds.')
 		.setDesc('If disabled, you will not be able to add new drawing embeds and those already embedded will appear as raw code. Existing drawing files will be hidden in Obsidian but still exist on disk. Changing this setting will require a restart of Obsidian to take effect.')
@@ -160,6 +174,13 @@ function insertSubfolderSettings(containerEl: HTMLElement, plugin: InkPlugin, re
 	const saveDrawingFolder = async (enteredValue: string) => {
 		const value = enteredValue || DEFAULT_SETTINGS.drawingSubfolder;
 		plugin.settings.drawingSubfolder = value.trim();
+		await plugin.saveSettings();
+		refresh();
+	}
+
+	const saveNotebookFolder = async (enteredValue: string) => {
+		const value = enteredValue || DEFAULT_SETTINGS.notebookSubfolder;
+		plugin.settings.notebookSubfolder = value.trim();
 		await plugin.saveSettings();
 		refresh();
 	}
@@ -277,10 +298,78 @@ function insertSubfolderSettings(containerEl: HTMLElement, plugin: InkPlugin, re
 						if(ev.key === 'Enter') saveDrawingFolder(textItem.getValue());
 					})
 				});
+
+			inputSettingEl = new Setting(container)
+				.setClass('ddc_ink_setting')
+				.setName('Notebook files subfolder')
+				.addText((textItem) => {
+					textItem.setValue(plugin.settings.notebookSubfolder.toString());
+					textItem.setPlaceholder(DEFAULT_SETTINGS.notebookSubfolder.toString());
+					textItem.inputEl.addEventListener('blur', async (ev: FocusEvent) => {
+						saveNotebookFolder(textItem.getValue());
+					})
+					textItem.inputEl.addEventListener('keypress', async (ev: KeyboardEvent) => {
+						if(ev.key === 'Enter') saveNotebookFolder(textItem.getValue());
+					})
+				});
 			inputSettingEl.settingEl.classList.add('ddc_ink_input-medium');
 		})
 
 
+}
+
+function insertNotebookSettings(containerEl: HTMLElement, plugin: InkPlugin, refresh: Function) {
+
+	const saveLinesPerPage = async (enteredValue: string) => {
+		const value = parseInt(enteredValue) || DEFAULT_SETTINGS.notebookLinesPerPage;
+		plugin.settings.notebookLinesPerPage = Math.max(3, Math.min(50, value));
+		await plugin.saveSettings();
+		refresh();
+	}
+
+	const sectionEl = containerEl.createDiv('ddc_ink_section ddc_ink_controls-section');
+	sectionEl.createEl('h2', { text: 'Notebook' });
+	sectionEl.createEl('p', { text: `Notebook mode provides page-based writing with fixed pages and page navigation. Run the action 'New notebook section' to embed a notebook.` });
+
+	const linesPerPageSetting = new Setting(sectionEl)
+		.setClass('ddc_ink_setting')
+		.setName('Lines per page')
+		.setDesc('Number of ruled lines on each page (3-50). Default: 10.')
+		.addText((textItem) => {
+			textItem.setValue(plugin.settings.notebookLinesPerPage.toString());
+			textItem.setPlaceholder(DEFAULT_SETTINGS.notebookLinesPerPage.toString());
+			textItem.inputEl.addEventListener('blur', async (ev: FocusEvent) => {
+				saveLinesPerPage(textItem.getValue());
+			});
+			textItem.inputEl.addEventListener('keypress', async (ev: KeyboardEvent) => {
+				if (ev.key === 'Enter') saveLinesPerPage(textItem.getValue());
+			});
+		});
+	linesPerPageSetting.settingEl.classList.add('ddc_ink_input-medium');
+
+	new Setting(sectionEl)
+		.setClass('ddc_ink_setting')
+		.setName('Show ruled lines when not editing')
+		.addToggle((toggle) => {
+			toggle.setValue(plugin.settings.notebookLinesWhenLocked);
+			toggle.onChange( async (value: boolean) => {
+				plugin.settings.notebookLinesWhenLocked = value;
+				await plugin.saveSettings();
+				refresh();
+			})
+		});
+
+	new Setting(sectionEl)
+		.setClass('ddc_ink_setting')
+		.setName('Show background when not editing')
+		.addToggle((toggle) => {
+			toggle.setValue(plugin.settings.notebookBackgroundWhenLocked);
+			toggle.onChange( async (value: boolean) => {
+				plugin.settings.notebookBackgroundWhenLocked = value;
+				await plugin.saveSettings();
+				refresh();
+			})
+		});
 }
 
 function insertDrawingSettings(containerEl: HTMLElement, plugin: InkPlugin, refresh: Function) {
@@ -333,66 +422,9 @@ function insertWritingSettings(containerEl: HTMLElement, plugin: InkPlugin, refr
 		refresh();
 	}
 
-	const saveLinesPerPage = async (enteredValue: string) => {
-		const value = parseInt(enteredValue) || DEFAULT_SETTINGS.writingLinesPerPage;
-		plugin.settings.writingLinesPerPage = Math.max(3, Math.min(50, value));
-		await plugin.saveSettings();
-		refresh();
-	}
-
 	const sectionEl = containerEl.createDiv('ddc_ink_section ddc_ink_controls-section');
 	sectionEl.createEl('h2', { text: 'Writing' });
 	sectionEl.createEl('p', { text: `While editing a Markdown file, run the action 'Insert new handwriting section' to embed a section for writing with a stylus.` });
-
-	new Setting(sectionEl)
-		.setClass('ddc_ink_setting')
-		.setClass('ddc_ink_button-set')
-		.setName('Writing mode')
-		.setDesc('Scroll mode gives an infinite vertical canvas. Pages mode splits writing into discrete notebook-style pages with fixed height.')
-		.addButton((button) => {
-			button.setButtonText('Scroll');
-			button.setClass('ddc_ink_left-most');
-			if (plugin.settings.writingPageMode === 'scroll') {
-				button.setCta();
-				button.setDisabled(true);
-			}
-			button.onClick(async () => {
-				plugin.settings.writingPageMode = 'scroll';
-				await plugin.saveSettings();
-				refresh();
-			});
-		})
-		.addButton((button) => {
-			button.setButtonText('Pages');
-			button.setClass('ddc_ink_right-most');
-			if (plugin.settings.writingPageMode === 'pages') {
-				button.setCta();
-				button.setDisabled(true);
-			}
-			button.onClick(async () => {
-				plugin.settings.writingPageMode = 'pages';
-				await plugin.saveSettings();
-				refresh();
-			});
-		});
-
-	if (plugin.settings.writingPageMode === 'pages') {
-		const linesPerPageSetting = new Setting(sectionEl)
-			.setClass('ddc_ink_setting')
-			.setName('Lines per page')
-			.setDesc('Number of ruled lines on each page (3-50). Default: 10.')
-			.addText((textItem) => {
-				textItem.setValue(plugin.settings.writingLinesPerPage.toString());
-				textItem.setPlaceholder(DEFAULT_SETTINGS.writingLinesPerPage.toString());
-				textItem.inputEl.addEventListener('blur', async (ev: FocusEvent) => {
-					saveLinesPerPage(textItem.getValue());
-				});
-				textItem.inputEl.addEventListener('keypress', async (ev: KeyboardEvent) => {
-					if (ev.key === 'Enter') saveLinesPerPage(textItem.getValue());
-				});
-			});
-		linesPerPageSetting.settingEl.classList.add('ddc_ink_input-medium');
-	}
 
 	new Setting(sectionEl)
 		.setClass('ddc_ink_setting')

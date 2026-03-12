@@ -10,6 +10,9 @@ import insertNewDrawingFile from './commands/insert-new-drawing-file';
 import insertExistingDrawingFile from './commands/insert-existing-drawing-file';
 import { registerDrawingView } from './views/drawing-view';
 import { registerDrawingEmbed } from './extensions/widgets/drawing-embed-widget';
+import { registerNotebookEmbed } from './extensions/widgets/notebook-embed-widget';
+import insertNewNotebookFile from './commands/insert-new-notebook-file';
+import { registerNotebookView } from './views/notebook-view';
 import insertRememberedDrawingFile from './commands/insert-remembered-drawing-file';
 import insertRememberedWritingFile from './commands/insert-remembered-writing-file';
 import { showWelcomeTips_maybe } from './notices/welcome-notice';
@@ -57,9 +60,15 @@ export default class InkPlugin extends Plugin {
 			implementWritingEmbedActions(this);
 		}
 		
+		if(this.settings.notebookEnabled) {
+			registerNotebookView(this);
+			registerNotebookEmbed(this);
+			implementNotebookEmbedActions(this);
+		}
+
 		if(this.settings.drawingEnabled) {
 			registerDrawingView(this);
-			registerDrawingEmbed(this);		
+			registerDrawingEmbed(this);
 			implementDrawingEmbedActions(this);
 		}
 		
@@ -111,6 +120,15 @@ function implementWritingEmbedActions(plugin: InkPlugin) {
 		name: 'Copied handwriting section',
 		icon: 'write_paste',
 		editorCallback: (editor: Editor) => insertRememberedWritingFile(plugin, editor)
+	});
+}
+
+function implementNotebookEmbedActions(plugin: InkPlugin) {
+	plugin.addCommand({
+		id: 'create-notebook-section',
+		name: 'New notebook section',
+		icon: 'write_default',
+		editorCallback: (editor: Editor) => insertNewNotebookFile(plugin, editor)
 	});
 }
 

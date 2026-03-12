@@ -32,4 +32,12 @@
         width: 1.2em !important;
         height: 1.2em !important;
     }
+
+    &.ink_page-delete-button {
+        margin-left: 4px;
+        opacity: 0.5;
+        svg {
+            fill: currentColor;
+        }
+    }
 }

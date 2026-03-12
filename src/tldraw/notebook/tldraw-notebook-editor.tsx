@@ -1,12 +1,12 @@
-import './tldraw-writing-editor.scss';
+import './tldraw-notebook-editor.scss';
 import { Box, DefaultDashStyle, DrawShapeUtil, Editor, HistoryEntry, StoreSnapshot, TLStoreSnapshot, TLRecord, TLShapeId, TLStore, TLUiOverrides, TLUnknownShape, Tldraw, getSnapshot, TLSerializedStore, TldrawOptions, TldrawEditor, defaultTools, defaultShapeTools, defaultShapeUtils, defaultBindingUtils, TldrawScribble, TldrawShapeIndicators, TldrawSelectionForeground, TldrawSelectionBackground, TldrawHandles, TLEditorSnapshot } from "@tldraw/tldraw";
 import { useRef } from "react";
-import { Activity, WritingCameraLimits, adaptTldrawToObsidianThemeMode, deleteObsoleteWritingTemplateShapes, focusChildTldrawEditor, getActivityType, getWritingContainerBounds, getWritingSvg, hideWritingContainer, hideWritingLines, hideWritingTemplate, initWritingCamera, initWritingCameraLimits, lockShape, prepareWritingSnapshot, preventTldrawCanvasesCausingObsidianGestures, resizeWritingTemplateInvitingly, addWritingLines, restrictWritingCamera, unhideWritingContainer, unhideWritingLines, unhideWritingTemplate, unlockShape, updateWritingStoreIfNeeded, useStash } from "../../utils/tldraw-helpers";
+import { Activity, WritingCameraLimits, adaptTldrawToObsidianThemeMode, deleteObsoleteWritingTemplateShapes, focusChildTldrawEditor, getActivityType, getWritingContainerBounds, getWritingSvg, hideWritingContainer, hideWritingLines, hideWritingTemplate, initWritingCamera, initWritingCameraLimits, lockShape, prepareWritingSnapshot, preventTldrawCanvasesCausingObsidianGestures, resizeWritingTemplateInvitingly, addWritingLines, restrictWritingCamera, silentlyChangeStore, unhideWritingContainer, unhideWritingLines, unhideWritingTemplate, unlockShape, updateWritingStoreIfNeeded, useStash } from "../../utils/tldraw-helpers";
 import { WritingContainer, WritingContainerUtil } from "../writing-shapes/writing-container"
 import { WritingMenu } from "../writing-menu/writing-menu";
 import InkPlugin from "../../main";
 import * as React from "react";
-import { MENUBAR_HEIGHT_PX, WRITE_LONG_DELAY_MS, WRITE_SHORT_DELAY_MS, WRITING_LINE_HEIGHT, WRITING_MIN_PAGE_HEIGHT, WRITING_PAGE_WIDTH } from 'src/constants';
+import { MENUBAR_HEIGHT_PX, WRITE_LONG_DELAY_MS, WRITE_SHORT_DELAY_MS, NOTEBOOK_LINE_HEIGHT, NOTEBOOK_PAGE_WIDTH } from 'src/constants';
 import { InkFileData, buildWritingFileData } from 'src/utils/page-file';
 import { TFile } from 'obsidian';
 import { PrimaryMenuBar } from '../primary-menu-bar/primary-menu-bar';
@@ -15,7 +15,7 @@ import classNames from 'classnames';
 import { WritingLines, WritingLinesUtil } from '../writing-shapes/writing-lines';
 import { getAssetUrlsByMetaUrl } from '@tldraw/assets/urls';
 import {getAssetUrlsByImport} from '@tldraw/assets/imports';
-import { editorActiveAtom, WritingEmbedState, embedStateAtom } from './writing-embed';
+import { NotebookEmbedState, notebookEmbedStateAtom, notebookEditorActiveAtom } from './notebook-embed';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { getInkFileData } from 'src/utils/getInkFileData';
 import { verbose } from 'src/utils/log-to-console';
@@ -23,15 +23,16 @@ import { isEreader } from 'src/utils/isEreader';
 import { EreaderDrawShapeUtil, setEreaderStreamline } from '../ereader-draw-shape-util';
 import { SecondaryMenuBar } from '../secondary-menu-bar/secondary-menu-bar';
 import ModifyMenu from '../modify-menu/modify-menu';
-import { ScrollButtons } from '../scroll-buttons/scroll-buttons';
+import { PageNavigation } from '../page-navigation/page-navigation';
+import { createWritingPage, detectPageOverflow, getCurrentPageIndex, getPageCount, navigateToPage } from 'src/utils/writing-pages';
 
 ///////
 ///////
 
-interface TldrawWritingEditorProps {
+interface TldrawNotebookEditorProps {
 	onResize?: Function,
 	plugin: InkPlugin,
-	writingFile: TFile,
+	notebookFile: TFile,
 	save: (inkFileData: InkFileData) => void,
 	extendedMenu?: any[],
 
@@ -46,11 +47,11 @@ interface TldrawWritingEditorProps {
 }
 
 // Wraps the component so that it can full unmount when inactive
-export const TldrawWritingEditorWrapper: React.FC<TldrawWritingEditorProps> = (props) => {
-    const editorActive = useAtomValue(editorActiveAtom);
+export const TldrawNotebookEditorWrapper: React.FC<TldrawNotebookEditorProps> = (props) => {
+    const editorActive = useAtomValue(notebookEditorActiveAtom);
 
     if(editorActive) {
-        return <TldrawWritingEditor {...props} />
+        return <TldrawNotebookEditor {...props} />
     } else {
         return <></>
     }
@@ -68,13 +69,13 @@ function getShapeUtils(useEreaderRenderer: boolean) {
 	return [...baseUtils, WritingContainerUtil, WritingLinesUtil];
 }
 
-export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
+export function TldrawNotebookEditor(props: TldrawNotebookEditorProps) {
 
 	const useEreaderRenderer = !props.plugin.settings.writingDynamicStrokeThickness || isEreader();
 	const shapeUtils = React.useMemo(() => getShapeUtils(useEreaderRenderer), [useEreaderRenderer]);
 
 	const [tlEditorSnapshot, setTlEditorSnapshot] = React.useState<TLEditorSnapshot>()
-	const setEmbedState = useSetAtom(embedStateAtom);
+	const setEmbedState = useSetAtom(notebookEmbedStateAtom);
 	const shortDelayPostProcessTimeoutRef = useRef<NodeJS.Timeout>();
 	const longDelayPostProcessTimeoutRef = useRef<NodeJS.Timeout>();
 	const tlEditorRef = useRef<Editor>();
@@ -83,17 +84,20 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 	const cameraLimitsRef = useRef<WritingCameraLimits>();
 	const [preventTransitions, setPreventTransitions] = React.useState<boolean>(true);
 
+	const linesPerPage = props.plugin.settings.notebookLinesPerPage;
+	const pageHeight = linesPerPage * NOTEBOOK_LINE_HEIGHT;
+
 	// On mount
 	React.useEffect( ()=> {
-		verbose('EDITOR mounted');
+		verbose('NOTEBOOK EDITOR mounted');
 		fetchFileData();
 		return () => {
-			verbose('EDITOR unmounting');
+			verbose('NOTEBOOK EDITOR unmounting');
 		}
 	}, [])
 
 	if(!tlEditorSnapshot) return <></>
-	verbose('EDITOR snapshot loaded')
+	verbose('NOTEBOOK EDITOR snapshot loaded')
 
 	////////
 
@@ -108,7 +112,7 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 
 	const handleMount = (_editor: Editor) => {
 		const editor = tlEditorRef.current = _editor;
-		setEmbedState(WritingEmbedState.editor);
+		setEmbedState(NotebookEmbedState.editor);
 		focusChildTldrawEditor(editorWrapperRefEl.current);
 
 		const ereader = isEreader();
@@ -118,27 +122,22 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 
 		setEreaderStreamline(props.plugin.settings.writingStreamline);
 
-		// Use simple constant-width strokes instead of perfect-freehand smoothing
 		const useSimpleStrokes = !props.plugin.settings.writingDynamicStrokeThickness || ereader;
 		if (useSimpleStrokes) {
 			editor.setStyleForNextShapes(DefaultDashStyle, 'solid');
 		}
 
-		// Apply e-reader CSS optimizations (disable animations/transitions)
 		if (ereader && editorWrapperRefEl.current) {
 			editorWrapperRefEl.current.classList.add('ddc_ink_ereader-mode');
 		}
 
 		resizeContainerIfEmbed(tlEditorRef.current);
 
-		updateWritingStoreIfNeeded(editor);
-
-		// tldraw content setup
+		// Notebook pages don't need updateWritingStoreIfNeeded — shapes are created per-page
 		adaptTldrawToObsidianThemeMode(editor);
-		resizeWritingTemplateInvitingly(editor);
-		resizeContainerIfEmbed(editor);	// Has an effect if the embed is new and started at 0
+		resizeContainerIfEmbed(editor);
 
-		// view set up
+		// Camera setup
 		if(props.embedded) {
 			initWritingCamera(editor);
 			editor.setCameraOptions({
@@ -149,12 +148,11 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 			cameraLimitsRef.current = initWritingCameraLimits(editor);
 		}
 
-		// Show editor only after camera is initialized to prevent drawing with wrong coordinates
 		if(editorWrapperRefEl.current) {
 			editorWrapperRefEl.current.style.opacity = '1';
 		}
 
-		// Re-init camera after layout settles to ensure correct dimensions
+		// Re-init camera after layout settles
 		requestAnimationFrame(() => {
 			if(props.embedded) {
 				initWritingCamera(editor);
@@ -165,13 +163,10 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 			}
 		});
 
-		// Runs on any USER caused change to the store, (Anything wrapped in silently change method doesn't call this).
 		const removeUserActionListener = editor.store.listen((entry) => {
-
 			const activity = getActivityType(entry);
 			switch (activity) {
 				case Activity.PointerMoved:
-					// REVIEW: Consider whether things are being erased
 					break;
 
 				case Activity.CameraMovedAutomatically:
@@ -184,43 +179,45 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 					resetInputPostProcessTimers();
 					stashStaleContent(editor);
 					break;
-					
+
 				case Activity.DrawingContinued:
 					resetInputPostProcessTimers();
 					break;
-							
+
 				case Activity.DrawingCompleted:
 					queueOrRunStorePostProcesses(editor);
+					// Auto-create next page on overflow
+					if (detectPageOverflow(editor, pageHeight)) {
+						const pageCount = getPageCount(editor);
+						createWritingPage(editor, pageCount, linesPerPage);
+						navigateToPage(editor, pageCount, props.embedded ? 0 : MENUBAR_HEIGHT_PX);
+					}
 					break;
-					
+
 				case Activity.DrawingErased:
 					queueOrRunStorePostProcesses(editor);
 					break;
-					
+
 				default:
-					// Catch anything else not specifically mentioned (ie. draw shape, etc.)
-					// queueOrRunStorePostProcesses(editor);
 					verbose('Activity not recognised.');
 					verbose(['entry', entry], {freeze: true});
 			}
 
 		}, {
-			source: 'user',	// Local changes
-			scope: 'all'	// Filters some things like camera movement changes. But Not sure it's locked down enough, so leaving as all.
+			source: 'user',
+			scope: 'all'
 		})
 
 		const unmountActions = () => {
-			// NOTE: This prevents the postProcessTimer completing when a new file is open and saving over that file.
 			resetInputPostProcessTimers();
 			removeUserActionListener();
 		}
 
 		if(props.saveControlsReference) {
 			props.saveControlsReference({
-				// save: () => completeSave(editor),
 				saveAndHalt: async (): Promise<void> => {
 					await completeSave(editor);
-					unmountActions();	// Clean up immediately so nothing else occurs between this completeSave and a future unmount
+					unmountActions();
 				},
 				resize: () => {
 					const camera = editor.getCamera()
@@ -230,7 +227,7 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 				}
 			})
 		}
-		
+
 		return () => {
 			unmountActions();
 		};
@@ -249,7 +246,6 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 			const newEmbedHeight = embedBounds.w / contentRatio;
 			props.onResize(newEmbedHeight);
 
-			// Re-init camera after container resize to prevent coordinate distortion
 			requestAnimationFrame(() => {
 				initWritingCamera(editor);
 				editor.setCameraOptions({ isLocked: true });
@@ -264,39 +260,29 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 		longDelayInputPostProcess(editor);
 	}
 
-	// Use this to run optimisations that that are quick and need to occur immediately on lifting the stylus
-	const instantInputPostProcess = (editor: Editor) => { //, entry?: HistoryEntry<TLRecord>) => {
-		if(!props.plugin.settings.writingManualLineAdd) {
-			resizeWritingTemplateInvitingly(editor);
-			resizeContainerIfEmbed(editor);
-		}
-		// entry && simplifyLines(editor, entry);
+	const instantInputPostProcess = (editor: Editor) => {
+		// Notebook pages have fixed height — no template resizing needed
+		resizeContainerIfEmbed(editor);
 	};
 
-	// Use this to run optimisations that take a small amount of time but should happen frequently
 	const smallDelayInputPostProcess = (editor: Editor) => {
 		resetShortPostProcessTimer();
-
 		shortDelayPostProcessTimeoutRef.current = setTimeout(
 			() => {
 				incrementalSave(editor);
 			},
 			WRITE_SHORT_DELAY_MS
 		)
-
 	};
 
-	// Use this to run optimisations after a slight delay
 	const longDelayInputPostProcess = (editor: Editor) => {
 		resetLongPostProcessTimer();
-		
 		longDelayPostProcessTimeoutRef.current = setTimeout(
 			() => {
 				completeSave(editor);
 			},
 			WRITE_LONG_DELAY_MS
 		)
-
 	};
 
 	const resetShortPostProcessTimer = () => {
@@ -311,7 +297,7 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 	}
 
 	const incrementalSave = async (editor: Editor) => {
-		verbose('incrementalSave');
+		verbose('notebook incrementalSave');
 		unstashStaleContent(editor);
 		const tlEditorSnapshot = getSnapshot(editor.store);
 		stashStaleContent(editor);
@@ -324,19 +310,33 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 	}
 
 	const completeSave = async (editor: Editor): Promise<void> => {
-		verbose('completeSave');
+		verbose('notebook completeSave');
 		let previewUri;
 
 		unstashStaleContent(editor);
 
+		// Switch to page 0 for preview generation, then switch back
+		const currentPageId = editor.getCurrentPageId();
+		const pages = editor.getPages();
+		if (pages.length > 1) {
+			silentlyChangeStore(editor, () => {
+				editor.setCurrentPage(pages[0].id);
+			});
+		}
+
 		const tlEditorSnapshot = getSnapshot(editor.store);
 		const svgObj = await getWritingSvg(editor);
 
+		if (pages.length > 1) {
+			silentlyChangeStore(editor, () => {
+				editor.setCurrentPage(currentPageId);
+			});
+		}
+
 		stashStaleContent(editor);
-		
+
 		if (svgObj) {
-			previewUri = svgObj.svg;//await svgToPngDataUri(svgObj)
-			// if(previewUri) addDataURIImage(previewUri)	// NOTE: Option for testing
+			previewUri = svgObj.svg;
 		}
 
 		if(previewUri) {
@@ -345,8 +345,6 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 				previewUri,
 			})
 			props.save(pageData);
-			// await savePngExport(props.plugin, previewUri, props.fileRef) // REVIEW: Still need a png?
-
 		} else {
 			const pageData = buildWritingFileData({
 				tlEditorSnapshot: tlEditorSnapshot,
@@ -361,27 +359,18 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 		return tlEditorRef.current;
 	};
 
-	const handleAddLines = (e: React.PointerEvent) => {
-		e.preventDefault();
-		e.stopPropagation();
-		const editor = tlEditorRef.current;
-		if (!editor) return;
-		addWritingLines(editor, 2);
-		resizeContainerIfEmbed(editor);
-	};
-
 	//////////////
 
 	return <>
 		<div
 			ref = {editorWrapperRefEl}
 			className = {classNames([
-				"ddc_ink_writing-editor",
+				"ddc_ink_notebook-editor",
 			])}
 			style={{
 				height: '100%',
 				position: 'relative',
-				opacity: 0, // So it's invisible while it loads
+				opacity: 0,
 			}}
 		>
 			<TldrawEditor
@@ -390,14 +379,11 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 				tools = {[...defaultTools, ...defaultShapeTools]}
 				initialState = "draw"
 				snapshot = {tlEditorSnapshot}
-				// persistenceKey = {props.fileRef.path}
 
-				// bindingUtils = {defaultBindingUtils}
 				components = {defaultComponents}
 
 				onMount = {handleMount}
 
-				// Prevent autoFocussing so it can be handled in the handleMount
 				autoFocus = {false}
 			/>
 
@@ -409,7 +395,6 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 				{props.embedded && props.extendedMenu && (
 					<ExtendedWritingMenu
 						onLockClick = { async () => {
-							// REVIEW: Save immediately? incase it hasn't been saved yet
 							if(props.closeEditor) props.closeEditor();
 						}}
 						menuOptions = {props.extendedMenu}
@@ -425,7 +410,6 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 						}}
 						aria-label="Exit focus mode"
 					>
-						{/* Fullscreen exit — Material Symbols Rounded */}
 						<svg xmlns="http://www.w3.org/2000/svg" height={24} viewBox="0 -960 960 960" width={24}>
 							<path d="M240-120v-120H120v-80h200v200h-80Zm400 0v-200h200v80H720v120h-80ZM120-640v-80h120v-120h80v200H120Zm520 0v-200h80v120h120v80H640Z" />
 						</svg>
@@ -438,21 +422,27 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 					getTlEditor = {getTlEditor}
 					onStoreChange = {(tlEditor: Editor) => queueOrRunStorePostProcesses(tlEditor)}
 				/>
-				{props.plugin.settings.writingManualLineAdd && (
-					<button
-						className="ink_add-lines-button"
-						onPointerDown={handleAddLines}
-						aria-label="Add 5 lines"
-					>
-						<svg xmlns="http://www.w3.org/2000/svg" height={24} viewBox="0 -960 960 960" width={24}>
-							<path d="M440-440H200q-17 0-28.5-11.5T160-480q0-17 11.5-28.5T200-520h240v-240q0-17 11.5-28.5T480-800q17 0 28.5 11.5T520-760v240h240q17 0 28.5 11.5T800-480q0 17-11.5 28.5T760-440H520v240q0 17-11.5 28.5T480-160q-17 0-28.5-11.5T440-200v-240Z" />
-						</svg>
-					</button>
-				)}
-				{props.embedded && props.plugin.settings.showScrollButtons && <ScrollButtons />}
-				{!props.embedded && props.plugin.settings.showScrollButtons && <ScrollButtons getTlEditor={getTlEditor} />}
+				<PageNavigation
+					getTlEditor = {getTlEditor}
+					linesPerPage = {linesPerPage}
+					topMarginPx = {props.embedded ? 0 : MENUBAR_HEIGHT_PX}
+					allowDelete = {true}
+					onPageChange = {() => {
+						const editor = tlEditorRef.current;
+						if (editor) {
+							unstashStaleContent(editor);
+							resizeContainerIfEmbed(editor);
+						}
+					}}
+					onPageDeleted = {() => {
+						const editor = tlEditorRef.current;
+						if (editor) {
+							queueOrRunStorePostProcesses(editor);
+						}
+					}}
+				/>
 			</SecondaryMenuBar>
-			
+
 		</div>
 	</>;
 
@@ -461,7 +451,7 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 	///////////////////
 
     async function fetchFileData() {
-        const inkFileData = await getInkFileData(props.plugin, props.writingFile)
+        const inkFileData = await getInkFileData(props.plugin, props.notebookFile)
         if(inkFileData.tldraw) {
             const snapshot = prepareWritingSnapshot(inkFileData.tldraw as TLEditorSnapshot);
             setTlEditorSnapshot(snapshot);
@@ -469,6 +459,3 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
     }
 
 };
-
-
-

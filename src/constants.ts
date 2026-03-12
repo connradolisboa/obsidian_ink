@@ -11,8 +11,10 @@ export const WRITING_SUBFOLDER_NAME = 'Writing';
 export const DRAWING_SUBFOLDER_NAME = 'Drawing';
 export const WRITE_FILE_EXT = 'writing';
 export const DRAW_FILE_EXT = 'drawing';
+export const NOTEBOOK_FILE_EXT = 'notebook';
 export const WRITE_EMBED_KEY = 'handwritten-ink';
 export const DRAW_EMBED_KEY = 'handdrawn-ink';
+export const NOTEBOOK_EMBED_KEY = 'notebook-ink';
 export const MENUBAR_HEIGHT_PX = 100;
 
 export const WRITE_SHORT_DELAY_MS = 500;
@@ -28,6 +30,11 @@ export const WRITING_LINE_HEIGHT = 150;
 export const WRITING_MIN_PAGE_HEIGHT = WRITING_LINE_HEIGHT * 1.5;
 export const WRITING_DEFAULT_LINES_PER_PAGE = 10;
 export const WRITING_DEFAULT_PAGE_HEIGHT = WRITING_LINE_HEIGHT * WRITING_DEFAULT_LINES_PER_PAGE;
+
+export const NOTEBOOK_PAGE_WIDTH = 2000;
+export const NOTEBOOK_LINE_HEIGHT = 150;
+export const NOTEBOOK_DEFAULT_LINES_PER_PAGE = 10;
+export const NOTEBOOK_DEFAULT_PAGE_HEIGHT = NOTEBOOK_LINE_HEIGHT * NOTEBOOK_DEFAULT_LINES_PER_PAGE;
 
 // export const DRAWING_INITIAL_CANVAS_WIDTH = 4000;
 export const DRAWING_INITIAL_WIDTH = 500;   // 750 // HACK: This sizing is a guestimation. It won't work for all themes.
