@@ -28,6 +28,7 @@ export class WritingView extends TextFileView {
     root: null | Root;
     plugin: InkPlugin;
     pageData: InkFileData;
+    focusModeActive: boolean = false;
     tldrawControls: {
         resize?: Function,
     } = {}
@@ -48,13 +49,15 @@ export class WritingView extends TextFileView {
     // This provides the data from the file for placing into the view (Called by Obsidian when file is opening)
     setViewData = (fileContents: string, clear: boolean) => {
         if(!this.file) return;
-        
+
         const pageData = JSON.parse(fileContents) as InkFileData;
         this.pageData = pageData;
 
         const viewContent = this.containerEl.children[1];
         viewContent.setAttr('style', 'padding: 0;');
-		
+
+        this.enableFocusMode();
+
         // If a new file is opening in the same leaf, then clear the old one instead of creating a new one
         if(this.root) this.clear();
         
@@ -85,6 +88,25 @@ export class WritingView extends TextFileView {
     clear = (): void => {
         // NOTE: Unmounting forces the store listeners in the React app to stop (Without that, old files can save data over new files)
         this.root?.unmount();
+        this.disableFocusMode();
+    }
+
+    onunload(): void {
+        this.disableFocusMode();
+    }
+
+    enableFocusMode(): void {
+        if(this.plugin.settings.fullscreenFocusMode && !this.focusModeActive) {
+            this.focusModeActive = true;
+            document.body.classList.add('ddc_ink_focus-mode');
+        }
+    }
+
+    disableFocusMode(): void {
+        if(this.focusModeActive) {
+            this.focusModeActive = false;
+            document.body.classList.remove('ddc_ink_focus-mode');
+        }
     }
 
     onResize = () => {

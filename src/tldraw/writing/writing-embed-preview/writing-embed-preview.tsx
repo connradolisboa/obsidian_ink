@@ -10,6 +10,7 @@ import { WritingEmbedState, embedStateAtom, previewActiveAtom } from '../writing
 import { TFile } from 'obsidian';
 import { getInkFileData } from 'src/utils/getInkFileData';
 import { CollapseIcon } from 'src/graphics/icons/collapse-icon';
+import { FullscreenIcon } from 'src/graphics/icons/fullscreen-icon';
 const emptyWritingSvg = require('../../../placeholders/empty-writing-embed.svg');
 
 //////////
@@ -21,6 +22,7 @@ interface WritingEmbedPreviewProps {
     writingFile: TFile,
     onClick: React.MouseEventHandler,
     onCollapseClick?: () => void,
+    onFullscreenClick?: () => void,
 }
 
 // Wraps the component so that it can full unmount when inactive
@@ -96,19 +98,34 @@ const WritingEmbedPreview: React.FC<WritingEmbedPreviewProps> = (props) => {
                 />
             </>)}
 
-            {props.onCollapseClick && (
-                <button
-                    className="ddc_ink_collapse-btn"
-                    onPointerDown={(e) => {
-                        e.stopPropagation();
-                        props.onCollapseClick?.();
-                    }}
-                    onClick={(e) => e.stopPropagation()}
-                    aria-label="Collapse embed"
-                >
-                    <CollapseIcon />
-                </button>
-            )}
+            <div className="ddc_ink_preview-buttons">
+                {props.onFullscreenClick && (
+                    <button
+                        className="ddc_ink_collapse-btn"
+                        onPointerDown={(e) => {
+                            e.stopPropagation();
+                            props.onFullscreenClick?.();
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        aria-label="Open fullscreen"
+                    >
+                        <FullscreenIcon />
+                    </button>
+                )}
+                {props.onCollapseClick && (
+                    <button
+                        className="ddc_ink_collapse-btn"
+                        onPointerDown={(e) => {
+                            e.stopPropagation();
+                            props.onCollapseClick?.();
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        aria-label="Collapse embed"
+                    >
+                        <CollapseIcon />
+                    </button>
+                )}
+            </div>
 
         </div>
     </>;

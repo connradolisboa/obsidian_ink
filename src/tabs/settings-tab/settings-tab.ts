@@ -413,6 +413,18 @@ function insertWritingSettings(containerEl: HTMLElement, plugin: InkPlugin, refr
 
 	new Setting(sectionEl)
 		.setClass('ddc_ink_setting')
+		.setName('Fullscreen focus mode')
+		.setDesc('When opening a writing file in fullscreen, hide the tab bar, mobile navbar, and bottom navigation for a distraction-free experience.')
+		.addToggle((toggle) => {
+			toggle.setValue(plugin.settings.fullscreenFocusMode);
+			toggle.onChange(async (value: boolean) => {
+				plugin.settings.fullscreenFocusMode = value;
+				await plugin.saveSettings();
+			});
+		});
+
+	new Setting(sectionEl)
+		.setClass('ddc_ink_setting')
 		.setName('Manual line add')
 		.setDesc('Disable automatic line adding when writing reaches the bottom. Instead, a + button is shown to manually add 5 lines. Useful for e-ink devices where automatic resizing causes writing distortion.')
 		.addToggle((toggle) => {

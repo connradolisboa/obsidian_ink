@@ -3,7 +3,7 @@ import { MarkdownRenderChild, MarkdownView, TFile } from "obsidian";
 import * as React from "react";
 import { Root, createRoot } from "react-dom/client";
 import { InkFileData, stringifyPageData } from "src/utils/page-file";
-import { WritingEmbedData as WritingEmbedData, applyCommonAncestorStyling, removeEmbed } from "src/utils/embed";
+import { WritingEmbedData as WritingEmbedData, applyCommonAncestorStyling, removeEmbed, updateWritingEmbedData } from "src/utils/embed";
 import InkPlugin from "src/main";
 import WritingEmbed from "src/tldraw/writing/writing-embed";
 import { WRITE_EMBED_KEY } from "src/constants";
@@ -16,6 +16,7 @@ import {
 
 interface EmbedCtrls {
 	removeEmbed: Function,
+	updateEmbedData: (embedData: WritingEmbedData) => void,
 }
 
 ////////
@@ -27,6 +28,7 @@ export function registerWritingEmbed(plugin: InkPlugin) {
 			const embedData = JSON.parse(source) as WritingEmbedData;
 			const embedCtrls: EmbedCtrls = {
 				removeEmbed: () => removeEmbed(plugin, ctx, el),
+				updateEmbedData: (data: WritingEmbedData) => updateWritingEmbedData(plugin, ctx, el, data),
 			}
 			if(embedData.filepath) {
 				ctx.addChild(new WritingEmbedWidget(el, plugin, embedData, embedCtrls));
@@ -75,8 +77,14 @@ class WritingEmbedWidget extends MarkdownRenderChild {
 					plugin = {this.plugin}
 					writingFileRef = {this.fileRef}
 					pageData = {pageData}
+					embedData = {this.embedData}
 					save = {this.save}
 					remove = {this.embedCtrls.removeEmbed}
+					onCollapsedChange = {(collapsed: boolean) => {
+						const updatedData = { ...this.embedData, collapsed };
+						this.embedData = updatedData;
+						this.embedCtrls.updateEmbedData(updatedData);
+					}}
 				/>
 			</JotaiProvider>
 		);

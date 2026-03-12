@@ -58,4 +58,39 @@
 }
 
 
+// Focus mode: hide Obsidian chrome when writing fullscreen
+body.ddc_ink_focus-mode {
+    // Tab bar / header
+    .workspace-tab-header-container,
+    .mod-top .workspace-tab-header-container {
+        display: none !important;
+    }
+
+    // Mobile navbar
+    .mobile-navbar {
+        display: none !important;
+    }
+
+    // Bottom navigation (mobile)
+    .mobile-bottom-nav {
+        display: none !important;
+    }
+
+    // Status bar
+    .status-bar {
+        display: none !important;
+    }
+
+    // Sidebar toggle ribbons
+    .workspace-ribbon {
+        display: none !important;
+    }
+
+    // View header (file name bar)
+    .view-header {
+        display: none !important;
+    }
+}
+
+
 

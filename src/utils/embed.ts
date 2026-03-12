@@ -10,6 +10,7 @@ export type WritingEmbedData = {
 	versionAtEmbed: string;
 	filepath: string;
 	transcript?: string;
+	collapsed?: boolean;
 };
 
 
@@ -73,6 +74,29 @@ export const rebuildDrawingEmbed = (embedData: DrawingEmbedData) => {
     embedStr += "\n```";
 	return embedStr;
 };
+
+/**
+ * Updates the JSON content of a writing embed code block without changing its boundaries.
+ */
+export function updateWritingEmbedData(plugin: InkPlugin, ctx: MarkdownPostProcessorContext, el: HTMLElement, embedData: WritingEmbedData) {
+	const cmEditor = plugin.app.workspace.activeEditor?.editor;
+	if(!cmEditor) return;
+
+	const sectionInfo = ctx.getSectionInfo(el);
+	if(sectionInfo?.lineStart === undefined || sectionInfo.lineEnd === undefined) return;
+
+	// Replace only the JSON content lines (between the opening ``` and closing ```)
+	const editorStart: EditorPosition = {
+		line: sectionInfo.lineStart + 1,
+		ch: 0,
+	}
+	const editorEnd: EditorPosition = {
+		line: sectionInfo.lineEnd,
+		ch: 0,
+	}
+
+	cmEditor.replaceRange(JSON.stringify(embedData, null, '\t') + '\n', editorStart, editorEnd);
+}
 
 // This function came from Notion like tables code
 export const getViewMode = (el: HTMLElement): MarkdownViewModeType | null => {

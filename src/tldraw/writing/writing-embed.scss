@@ -61,14 +61,34 @@
     }
 }
 
+.ddc_ink_collapsed-bar-buttons {
+    display: flex;
+    gap: 2px;
+}
+
 .ddc_ink_collapsed-bar .ddc_ink_collapse-btn {
     position: static;
     opacity: 1;
     background: none;
 }
 
+.ddc_ink_preview-buttons {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    z-index: 20;
+    display: flex;
+    gap: 2px;
+
+    .ddc_ink_collapse-btn {
+        position: static;
+    }
+}
+
 .ddc_ink_writing-embed-preview:hover .ddc_ink_collapse-btn,
-.ddc_ink_drawing-embed-preview:hover .ddc_ink_collapse-btn {
+.ddc_ink_drawing-embed-preview:hover .ddc_ink_collapse-btn,
+.ddc_ink_writing-embed-preview:hover .ddc_ink_preview-buttons .ddc_ink_collapse-btn,
+.ddc_ink_drawing-embed-preview:hover .ddc_ink_preview-buttons .ddc_ink_collapse-btn {
     opacity: 1;
 }
 

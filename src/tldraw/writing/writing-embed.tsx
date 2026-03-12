@@ -12,6 +12,7 @@ import { GlobalSessionState } from "src/logic/stores";
 import { useDispatch } from 'react-redux';
 import { WritingEmbedPreviewWrapper } from "./writing-embed-preview/writing-embed-preview";
 import { openInkFile } from "src/utils/open-file";
+import { WritingEmbedData } from "src/utils/embed";
 import { nanoid } from "nanoid";
 import { embedShouldActivateImmediately } from "src/utils/storage";
 import classNames from "classnames";
@@ -20,6 +21,7 @@ import { getInkFileData } from "src/utils/getInkFileData";
 import { verbose } from "src/utils/log-to-console";
 import { CollapseIcon } from "src/graphics/icons/collapse-icon";
 import { ExpandIcon } from "src/graphics/icons/expand-icon";
+import { FullscreenIcon } from "src/graphics/icons/fullscreen-icon";
 
 ///////
 ///////
@@ -52,8 +54,10 @@ export function WritingEmbed (props: {
 	plugin: InkPlugin,
 	writingFileRef: TFile,
 	pageData: InkFileData,
+	embedData?: WritingEmbedData,
 	save: (pageData: InkFileData) => void,
 	remove: Function,
+	onCollapsedChange?: (collapsed: boolean) => void,
 }) {
 	const embedContainerElRef = useRef<HTMLDivElement>(null);
 	const resizeContainerElRef = useRef<HTMLDivElement>(null);
@@ -64,7 +68,12 @@ export function WritingEmbed (props: {
 	// const dispatch = useDispatch();
 
 	const setEmbedState = useSetAtom(embedStateAtom);
-	const [collapsed, setCollapsed] = useState(false);
+	const [collapsed, setCollapsed] = useState(props.embedData?.collapsed ?? false);
+
+	function handleCollapsedChange(value: boolean) {
+		setCollapsed(value);
+		props.onCollapsedChange?.(value);
+	}
 
 	// On first mount
 	React.useEffect( () => {
@@ -129,13 +138,25 @@ export function WritingEmbed (props: {
 			{collapsed && (
 				<div className="ddc_ink_collapsed-bar">
 					<span className="ddc_ink_collapsed-label">Writing</span>
-					<button
-						className="ddc_ink_collapse-btn"
-						onPointerDown={() => setCollapsed(false)}
-						aria-label="Expand embed"
-					>
-						<ExpandIcon />
-					</button>
+					<div className="ddc_ink_collapsed-bar-buttons">
+						<button
+							className="ddc_ink_collapse-btn"
+							onPointerDown={(e) => {
+								e.stopPropagation();
+								openInkFile(props.plugin, props.writingFileRef);
+							}}
+							aria-label="Open fullscreen"
+						>
+							<FullscreenIcon />
+						</button>
+						<button
+							className="ddc_ink_collapse-btn"
+							onPointerDown={() => handleCollapsedChange(false)}
+							aria-label="Expand embed"
+						>
+							<ExpandIcon />
+						</button>
+					</div>
 				</div>
 			)}
 
@@ -150,7 +171,8 @@ export function WritingEmbed (props: {
 						plugin = {props.plugin}
 						onResize = {(height: number) => resizeContainer(height)}
 						writingFile = {props.writingFileRef}
-						onCollapseClick = {() => setCollapsed(true)}
+						onCollapseClick = {() => handleCollapsedChange(true)}
+						onFullscreenClick = {() => openInkFile(props.plugin, props.writingFileRef)}
 						onClick = {async (event) => {
 							// dispatch({ type: 'global-session/setActiveEmbedId', payload: embedId })
 							// setPageData( await refreshPageData(props.plugin, props.fileRef) );

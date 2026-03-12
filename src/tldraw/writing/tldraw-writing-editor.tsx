@@ -429,7 +429,7 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 					</button>
 				)}
 				{props.embedded && props.plugin.settings.showScrollButtons && <ScrollButtons />}
-				{!props.embedded && <ScrollButtons getTlEditor={getTlEditor} />}
+				{!props.embedded && props.plugin.settings.showScrollButtons && <ScrollButtons getTlEditor={getTlEditor} />}
 			</SecondaryMenuBar>
 			
 		</div>
