@@ -413,6 +413,18 @@ function insertWritingSettings(containerEl: HTMLElement, plugin: InkPlugin, refr
 
 	new Setting(sectionEl)
 		.setClass('ddc_ink_setting')
+		.setName('Manual line add')
+		.setDesc('Disable automatic line adding when writing reaches the bottom. Instead, a + button is shown to manually add 5 lines. Useful for e-ink devices where automatic resizing causes writing distortion.')
+		.addToggle((toggle) => {
+			toggle.setValue(plugin.settings.writingManualLineAdd);
+			toggle.onChange(async (value: boolean) => {
+				plugin.settings.writingManualLineAdd = value;
+				await plugin.saveSettings();
+			});
+		});
+
+	new Setting(sectionEl)
+		.setClass('ddc_ink_setting')
 		.setName('Writing stroke limit')
 		.setDesc(`Too much writing in one embed can create a lag between your physical pen movement and the line appearing on screen. The stroke limit defines the maximum pen strokes before old strokes start becoming invisible until the embed is locked. Set this to a lower number if you're experiencing lag or jagged writing.`)
 

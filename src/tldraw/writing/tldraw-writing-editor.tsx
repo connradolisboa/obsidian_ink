@@ -1,7 +1,7 @@
 import './tldraw-writing-editor.scss';
 import { Box, DefaultDashStyle, DrawShapeUtil, Editor, HistoryEntry, StoreSnapshot, TLStoreSnapshot, TLRecord, TLShapeId, TLStore, TLUiOverrides, TLUnknownShape, Tldraw, getSnapshot, TLSerializedStore, TldrawOptions, TldrawEditor, defaultTools, defaultShapeTools, defaultShapeUtils, defaultBindingUtils, TldrawScribble, TldrawShapeIndicators, TldrawSelectionForeground, TldrawSelectionBackground, TldrawHandles, TLEditorSnapshot } from "@tldraw/tldraw";
 import { useRef } from "react";
-import { Activity, WritingCameraLimits, adaptTldrawToObsidianThemeMode, deleteObsoleteWritingTemplateShapes, focusChildTldrawEditor, getActivityType, getWritingContainerBounds, getWritingSvg, hideWritingContainer, hideWritingLines, hideWritingTemplate, initWritingCamera, initWritingCameraLimits, lockShape, prepareWritingSnapshot, preventTldrawCanvasesCausingObsidianGestures, resizeWritingTemplateInvitingly, restrictWritingCamera, silentlyChangeStore, unhideWritingContainer, unhideWritingLines, unhideWritingTemplate, unlockShape, updateWritingStoreIfNeeded, useStash } from "../../utils/tldraw-helpers";
+import { Activity, WritingCameraLimits, adaptTldrawToObsidianThemeMode, deleteObsoleteWritingTemplateShapes, focusChildTldrawEditor, getActivityType, getWritingContainerBounds, getWritingSvg, hideWritingContainer, hideWritingLines, hideWritingTemplate, initWritingCamera, initWritingCameraLimits, lockShape, prepareWritingSnapshot, preventTldrawCanvasesCausingObsidianGestures, resizeWritingTemplateInvitingly, addWritingLines, restrictWritingCamera, silentlyChangeStore, unhideWritingContainer, unhideWritingLines, unhideWritingTemplate, unlockShape, updateWritingStoreIfNeeded, useStash } from "../../utils/tldraw-helpers";
 import { WritingContainer, WritingContainerUtil } from "../writing-shapes/writing-container"
 import { WritingMenu } from "../writing-menu/writing-menu";
 import InkPlugin from "../../main";
@@ -263,15 +263,17 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 
 	// Use this to run optimisations that that are quick and need to occur immediately on lifting the stylus
 	const instantInputPostProcess = (editor: Editor) => { //, entry?: HistoryEntry<TLRecord>) => {
-		resizeWritingTemplateInvitingly(editor);
-		resizeContainerIfEmbed(editor);
+		if(!props.plugin.settings.writingManualLineAdd) {
+			resizeWritingTemplateInvitingly(editor);
+			resizeContainerIfEmbed(editor);
+		}
 		// entry && simplifyLines(editor, entry);
 	};
 
 	// Use this to run optimisations that take a small amount of time but should happen frequently
 	const smallDelayInputPostProcess = (editor: Editor) => {
 		resetShortPostProcessTimer();
-		
+
 		shortDelayPostProcessTimeoutRef.current = setTimeout(
 			() => {
 				incrementalSave(editor);
@@ -354,6 +356,15 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 		return tlEditorRef.current;
 	};
 
+	const handleAddLines = (e: React.PointerEvent) => {
+		e.preventDefault();
+		e.stopPropagation();
+		const editor = tlEditorRef.current;
+		if (!editor) return;
+		addWritingLines(editor, 2);
+		resizeContainerIfEmbed(editor);
+	};
+
 	//////////////
 
 	return <>
@@ -406,6 +417,17 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 					getTlEditor = {getTlEditor}
 					onStoreChange = {(tlEditor: Editor) => queueOrRunStorePostProcesses(tlEditor)}
 				/>
+				{props.plugin.settings.writingManualLineAdd && (
+					<button
+						className="ink_add-lines-button"
+						onPointerDown={handleAddLines}
+						aria-label="Add 5 lines"
+					>
+						<svg xmlns="http://www.w3.org/2000/svg" height={24} viewBox="0 -960 960 960" width={24}>
+							<path d="M440-440H200q-17 0-28.5-11.5T160-480q0-17 11.5-28.5T200-520h240v-240q0-17 11.5-28.5T480-800q17 0 28.5 11.5T520-760v240h240q17 0 28.5 11.5T800-480q0 17-11.5 28.5T760-440H520v240q0 17-11.5 28.5T480-160q-17 0-28.5-11.5T440-200v-240Z" />
+						</svg>
+					</button>
+				)}
 				{props.embedded && props.plugin.settings.showScrollButtons && <ScrollButtons />}
 				{!props.embedded && <ScrollButtons getTlEditor={getTlEditor} />}
 			</SecondaryMenuBar>

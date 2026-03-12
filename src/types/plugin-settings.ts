@@ -23,6 +23,7 @@ export interface PluginSettings {
 	stylusOnlyInput: boolean,
 	fingerSwipeScroll: boolean,
 	showScrollButtons: boolean,
+	writingManualLineAdd: boolean,
 	writingLinesWhenLocked: boolean,
 	writingBackgroundWhenLocked: boolean,
 	// Drawing specific
@@ -53,6 +54,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 	stylusOnlyInput: false,
 	fingerSwipeScroll: false,
 	showScrollButtons: true,
+	writingManualLineAdd: false,
 	writingLinesWhenLocked: true,
 	writingBackgroundWhenLocked: true,
 	// Drawing specific

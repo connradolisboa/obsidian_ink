@@ -783,6 +783,43 @@ export const resizeWritingTemplateInvitingly = (editor: Editor) => {
 }
 
 /***
+ * Add a specified number of extra lines to the writing template.
+ */
+export const addWritingLines = (editor: Editor, lineCount: number = 5) => {
+	verbose('addWritingLines');
+
+	const writingLinesShape = editor.getShape('shape:writing-lines' as TLShapeId) as WritingLines;
+	const writingContainerShape = editor.getShape('shape:writing-container' as TLShapeId) as WritingContainer;
+
+	if(!writingLinesShape) return;
+	if(!writingContainerShape) return;
+
+	const currentHeight = writingContainerShape.props.h;
+	const newHeight = currentHeight + lineCount * WRITING_LINE_HEIGHT;
+
+	silentlyChangeStore( editor, () => {
+		unlockShape(editor, writingContainerShape);
+		unlockShape(editor, writingLinesShape);
+		editor.updateShape({
+			id: writingContainerShape.id,
+			type: writingContainerShape.type,
+			props: {
+				h: newHeight,
+			}
+		})
+		editor.updateShape({
+			id: writingLinesShape.id,
+			type: writingLinesShape.type,
+			props: {
+				h: newHeight,
+			}
+		})
+		lockShape(editor, writingContainerShape);
+		lockShape(editor, writingLinesShape);
+	})
+}
+
+/***
  * Add just enough space under writing strokes to view baseline.
  * Good for screenshots and other non-interactive states.
  */
