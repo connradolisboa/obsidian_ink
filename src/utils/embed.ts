@@ -156,28 +156,32 @@ export function applyCommonAncestorStyling(embedEl: HTMLElement) {
 	const scrollerMarginLeft = scrollerStyle.paddingLeft;
 	const scrollerMarginRight = scrollerStyle.paddingRight;
 
+	// Verify the embed block's actual left offset from the scroller matches the padding.
+	// Themes like Minimal use .cm-sizer width constraints (not scroller padding) for their
+	// reading column, so the scroller may have padding while the embed block is already
+	// at the scroller's left edge. Applying a negative margin in that case would push
+	// the embed off-screen to the left.
+	const scrollerRect = parentPageScrollerEl.getBoundingClientRect();
+	const embedRect = parentEmbedBlockEl.getBoundingClientRect();
+	const embedStartOffsetFromScroller = embedRect.left - scrollerRect.left;
+	const startMarginValue = parseFloat(scrollerInlineStartMargin) || 0;
+	const endMarginValue = parseFloat(scrollerInlineEndMargin) || 0;
+	const embedEndOffsetFromScroller = scrollerRect.right - embedRect.right;
+
 	const pageHasScrollerInlineStartMargin = scrollerInlineStartMargin && scrollerInlineStartMargin !== '0' && scrollerInlineStartMargin !== '0px';
-	if(pageHasScrollerInlineStartMargin) {
+	if(pageHasScrollerInlineStartMargin && embedStartOffsetFromScroller >= startMarginValue - 8) {
 		let style = parentEmbedBlockEl.getAttribute('style') ?? '';
 		// Negate the scroller margin
 		style += `; margin-inline-start: calc(-1 * ${scrollerInlineStartMargin} + 4px) !important`;
 		parentEmbedBlockEl.setAttribute('style', style);
-
-	} else {
-		// Let it remain auto centered
-
 	}
 
 	const pageHasScrollerInlineEndMargin = scrollerInlineEndMargin && scrollerInlineEndMargin !== '0' && scrollerInlineEndMargin !== '0px';
-	if(pageHasScrollerInlineEndMargin) {
+	if(pageHasScrollerInlineEndMargin && embedEndOffsetFromScroller >= endMarginValue - 8) {
 		let style = parentEmbedBlockEl.getAttribute('style') ?? '';
 		// Negate the scroller margin
 		style += `; margin-inline-end: calc(-1 * ${scrollerInlineEndMargin} + 4px) !important`;
 		parentEmbedBlockEl.setAttribute('style', style);
-
-	} else {
-		// Let it remain auto centered
-
 	}
 }
 
