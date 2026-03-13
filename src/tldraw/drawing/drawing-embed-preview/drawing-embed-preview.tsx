@@ -70,6 +70,7 @@ export const DrawingEmbedPreview: React.FC<DrawingEmbedPreviewProps> = (props) =
                 pointerEvents: 'all',
             }}
             onClick = {props.onClick}
+            onMouseDown = {(e) => e.stopPropagation()}
 
             // Not currently doing this cause it can mean users easily lose their undo history
             // onMouseUp = {props.onEditClick}

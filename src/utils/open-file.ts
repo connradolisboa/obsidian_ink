@@ -1,19 +1,20 @@
-import { TFile } from "obsidian";
+import { TFile, WorkspaceLeaf } from "obsidian";
 import InkPlugin from "src/main";
 
 ////////
 ////////
 
-export async function openInkFile(plugin: InkPlugin, fileRef: TFile) {
-    // switch(position) {
-        // case ViewPosition.replacement:      openInActiveView(plugin, fileRef); break;
-        // case ViewPosition.tab:              activateTabView(plugin, fileRef); break;
-        // case ViewPosition.verticalSplit:    activateSplitView(plugin, fileRef, 'horizontal'); break;
-        // case ViewPosition.horizontalSplit:  activateSplitView(plugin, fileRef, 'vertical'); break;
-        // default: openInCurrentView(plugin, fileRef); break;
-    // }
+export async function openInkFile(plugin: InkPlugin, fileRef: TFile, closeSourceLeaf?: WorkspaceLeaf | null) {
+    const leafToClose = closeSourceLeaf ?? null;
+    await openInActiveView(plugin, fileRef);
 
-    openInActiveView(plugin, fileRef);
+    if (leafToClose) {
+        // Only close if the writing file opened in a different leaf
+        const newActiveLeaf = plugin.app.workspace.activeLeaf;
+        if (newActiveLeaf !== leafToClose) {
+            leafToClose.detach();
+        }
+    }
 }
 
 export async function openInActiveView(plugin: InkPlugin, fileRef: TFile) {

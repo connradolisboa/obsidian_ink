@@ -147,7 +147,7 @@ export function WritingEmbed (props: {
 			}}
 		>
 			{collapsed && (
-				<div className="ddc_ink_collapsed-bar">
+				<div className="ddc_ink_collapsed-bar" onMouseDown={(e) => e.stopPropagation()}>
 					{isEditingTitle ? (
 						<input
 							ref={titleInputRef}
@@ -178,7 +178,11 @@ export function WritingEmbed (props: {
 							className="ddc_ink_collapse-btn"
 							onPointerDown={(e) => {
 								e.stopPropagation();
-								openInkFile(props.plugin, props.writingFileRef);
+								openInkFile(
+									props.plugin,
+									props.writingFileRef,
+									props.plugin.settings.closeNoteOnFullscreen ? props.plugin.app.workspace.activeLeaf : null
+								);
 							}}
 							aria-label="Open fullscreen"
 						>
@@ -186,7 +190,8 @@ export function WritingEmbed (props: {
 						</button>
 						<button
 							className="ddc_ink_collapse-btn"
-							onPointerDown={() => handleCollapsedChange(false)}
+							onPointerDown={(e) => { e.stopPropagation(); handleCollapsedChange(false); }}
+							onMouseDown={(e) => e.stopPropagation()}
 							aria-label="Expand embed"
 						>
 							<ExpandIcon />
@@ -207,7 +212,11 @@ export function WritingEmbed (props: {
 						onResize = {(height: number) => resizeContainer(height)}
 						writingFile = {props.writingFileRef}
 						onCollapseClick = {() => handleCollapsedChange(true)}
-						onFullscreenClick = {() => openInkFile(props.plugin, props.writingFileRef)}
+						onFullscreenClick = {() => openInkFile(
+						props.plugin,
+						props.writingFileRef,
+						props.plugin.settings.closeNoteOnFullscreen ? props.plugin.app.workspace.activeLeaf : null
+					)}
 						onClick = {async (event) => {
 							// dispatch({ type: 'global-session/setActiveEmbedId', payload: embedId })
 							// setPageData( await refreshPageData(props.plugin, props.fileRef) );

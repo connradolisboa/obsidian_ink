@@ -514,6 +514,18 @@ function insertWritingSettings(containerEl: HTMLElement, plugin: InkPlugin, refr
 
 	new Setting(sectionEl)
 		.setClass('ddc_ink_setting')
+		.setName('Close note when opening fullscreen')
+		.setDesc('When opening a writing or drawing file in fullscreen from an embed, automatically close the note it was embedded in.')
+		.addToggle((toggle) => {
+			toggle.setValue(plugin.settings.closeNoteOnFullscreen);
+			toggle.onChange(async (value: boolean) => {
+				plugin.settings.closeNoteOnFullscreen = value;
+				await plugin.saveSettings();
+			});
+		});
+
+	new Setting(sectionEl)
+		.setClass('ddc_ink_setting')
 		.setName('Manual line add')
 		.setDesc('Disable automatic line adding when writing reaches the bottom. Instead, a + button is shown to manually add 5 lines. Useful for e-ink devices where automatic resizing causes writing distortion.')
 		.addToggle((toggle) => {

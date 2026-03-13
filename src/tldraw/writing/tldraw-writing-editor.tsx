@@ -1,7 +1,7 @@
 import './tldraw-writing-editor.scss';
 import { Box, DefaultDashStyle, DrawShapeUtil, Editor, HistoryEntry, StoreSnapshot, TLStoreSnapshot, TLRecord, TLShapeId, TLStore, TLUiOverrides, TLUnknownShape, Tldraw, getSnapshot, TLSerializedStore, TldrawOptions, TldrawEditor, defaultTools, defaultShapeTools, defaultShapeUtils, defaultBindingUtils, TldrawScribble, TldrawShapeIndicators, TldrawSelectionForeground, TldrawSelectionBackground, TldrawHandles, TLEditorSnapshot } from "@tldraw/tldraw";
 import { useRef } from "react";
-import { Activity, WritingCameraLimits, adaptTldrawToObsidianThemeMode, deleteObsoleteWritingTemplateShapes, focusChildTldrawEditor, getActivityType, getWritingContainerBounds, getWritingSvg, hideWritingContainer, hideWritingLines, hideWritingTemplate, initWritingCamera, initWritingCameraLimits, lockShape, prepareWritingSnapshot, preventTldrawCanvasesCausingObsidianGestures, resizeWritingTemplateInvitingly, addWritingLines, restrictWritingCamera, unhideWritingContainer, unhideWritingLines, unhideWritingTemplate, unlockShape, updateWritingStoreIfNeeded, useStash } from "../../utils/tldraw-helpers";
+import { Activity, WritingCameraLimits, adaptTldrawToObsidianThemeMode, deleteObsoleteWritingTemplateShapes, focusChildTldrawEditor, getActivityType, getWritingContainerBounds, getWritingSvg, hideWritingContainer, hideWritingLines, hideWritingTemplate, initWritingCamera, initWritingCameraLimits, lockShape, prepareWritingSnapshot, preventTldrawCanvasesCausingObsidianGestures, resizeWritingTemplateInvitingly, addWritingLines, restrictWritingCamera, silentlyChangeStore, unhideWritingContainer, unhideWritingLines, unhideWritingTemplate, unlockShape, updateWritingStoreIfNeeded, useStash } from "../../utils/tldraw-helpers";
 import { WritingContainer, WritingContainerUtil } from "../writing-shapes/writing-container"
 import { WritingMenu } from "../writing-menu/writing-menu";
 import InkPlugin from "../../main";
@@ -209,10 +209,34 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 			scope: 'all'	// Filters some things like camera movement changes. But Not sure it's locked down enough, so leaving as all.
 		})
 
+		// Keyboard arrow key scrolling
+		const handleKeyDown = (e: KeyboardEvent) => {
+			if (e.target !== tlCanvas && !(tlCanvas as HTMLElement)?.contains(e.target as Node)) return;
+			const scrollKeys: Record<string, number> = {
+				ArrowDown: 80, ArrowUp: -80, PageDown: 400, PageUp: -400,
+			};
+			const delta = scrollKeys[e.key];
+			if (delta === undefined) return;
+
+			e.preventDefault();
+			const scrollContainer = editorWrapperRefEl.current?.closest('.cm-scroller') as HTMLElement;
+			if (scrollContainer) {
+				scrollContainer.scrollBy({ top: delta, behavior: 'smooth' });
+				return;
+			}
+			const cam = editor.getCamera();
+			silentlyChangeStore(editor, () => {
+				editor.setCamera({ x: cam.x, y: cam.y - delta, z: cam.z });
+			});
+		};
+		const tlCanvas = editorWrapperRefEl.current?.querySelector('.tl-canvas') as HTMLElement;
+		if (tlCanvas) tlCanvas.addEventListener('keydown', handleKeyDown);
+
 		const unmountActions = () => {
 			// NOTE: This prevents the postProcessTimer completing when a new file is open and saving over that file.
 			resetInputPostProcessTimers();
 			removeUserActionListener();
+			if (tlCanvas) tlCanvas.removeEventListener('keydown', handleKeyDown);
 		}
 
 		if(props.saveControlsReference) {

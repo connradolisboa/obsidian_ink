@@ -68,6 +68,7 @@ const WritingEmbedPreview: React.FC<WritingEmbedPreviewProps> = (props) => {
                 width: '100%',
             }}
             onClick={props.onClick}
+            onMouseDown={(e) => e.stopPropagation()}
 
             // Not currently doing this cause it can mean users easily lose their undo history
             // onMouseUp = {props.onEditClick}

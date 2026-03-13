@@ -182,6 +182,29 @@ export function preventTldrawCanvasesCausingObsidianGestures(tlEditor: Editor, o
 			}, { passive: true });
 		}
 	}
+
+	// Mouse wheel scroll: redirect to page scroll (embed) or camera scroll (fullscreen)
+	tlCanvas.addEventListener('wheel', (e: WheelEvent) => {
+		if (e.ctrlKey) return; // Allow ctrl+scroll (browser zoom) to pass through
+
+		// In embed mode, scroll the page
+		const scrollContainer = tlCanvas.closest('.cm-scroller') as HTMLElement;
+		if (scrollContainer) {
+			e.preventDefault();
+			e.stopPropagation();
+			scrollContainer.scrollBy({ top: e.deltaY, behavior: 'auto' });
+			return;
+		}
+
+		// In fullscreen mode, scroll the camera
+		e.preventDefault();
+		e.stopPropagation();
+		const camera = tlEditor.getCamera();
+		const zoom = camera.z || 1;
+		silentlyChangeStore(tlEditor, () => {
+			tlEditor.setCamera({ x: camera.x, y: camera.y - e.deltaY / zoom, z: camera.z });
+		});
+	}, { passive: false });
 }
 
 export function initWritingCamera(editor: Editor, topMarginPx: number = 0) {

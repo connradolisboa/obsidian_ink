@@ -141,7 +141,7 @@ export function DrawingEmbed (props: {
 			}}
 		>
 			{collapsed && (
-				<div className="ddc_ink_collapsed-bar">
+				<div className="ddc_ink_collapsed-bar" onMouseDown={(e) => e.stopPropagation()}>
 					{isEditingTitle ? (
 						<input
 							ref={titleInputRef}
@@ -172,7 +172,11 @@ export function DrawingEmbed (props: {
 							className="ddc_ink_collapse-btn"
 							onPointerDown={(e) => {
 								e.stopPropagation();
-								openInkFile(props.plugin, props.drawingFileRef);
+								openInkFile(
+									props.plugin,
+									props.drawingFileRef,
+									props.plugin.settings.closeNoteOnFullscreen ? props.plugin.app.workspace.activeLeaf : null
+								);
 							}}
 							aria-label="Open fullscreen"
 						>
@@ -180,7 +184,8 @@ export function DrawingEmbed (props: {
 						</button>
 						<button
 							className="ddc_ink_collapse-btn"
-							onPointerDown={() => handleCollapsedChange(false)}
+							onPointerDown={(e) => { e.stopPropagation(); handleCollapsedChange(false); }}
+							onMouseDown={(e) => e.stopPropagation()}
 							aria-label="Expand embed"
 						>
 							<ExpandIcon />
@@ -208,7 +213,11 @@ export function DrawingEmbed (props: {
 						onReady = {() => {}}
 						drawingFile = {props.drawingFileRef}
 						onCollapseClick = {() => handleCollapsedChange(true)}
-						onFullscreenClick = {() => openInkFile(props.plugin, props.drawingFileRef)}
+						onFullscreenClick = {() => openInkFile(
+							props.plugin,
+							props.drawingFileRef,
+							props.plugin.settings.closeNoteOnFullscreen ? props.plugin.app.workspace.activeLeaf : null
+						)}
 						onClick = { async () => {
 							switchToEditMode();
 						}}
