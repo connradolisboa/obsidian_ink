@@ -69,7 +69,7 @@ export const DrawingEmbedPreview: React.FC<DrawingEmbedPreviewProps> = (props) =
                 height: '100%',
                 pointerEvents: 'all',
             }}
-            onClick = {props.onClick}
+            onClick = {(e) => { e.stopPropagation(); props.onClick(e); }}
             onMouseDown = {(e) => e.stopPropagation()}
 
             // Not currently doing this cause it can mean users easily lose their undo history
@@ -111,6 +111,7 @@ export const DrawingEmbedPreview: React.FC<DrawingEmbedPreviewProps> = (props) =
                             e.stopPropagation();
                             props.onFullscreenClick?.();
                         }}
+                        onMouseDown={(e) => e.stopPropagation()}
                         onClick={(e) => e.stopPropagation()}
                         aria-label="Open fullscreen"
                     >
@@ -124,6 +125,7 @@ export const DrawingEmbedPreview: React.FC<DrawingEmbedPreviewProps> = (props) =
                             e.stopPropagation();
                             props.onCollapseClick?.();
                         }}
+                        onMouseDown={(e) => e.stopPropagation()}
                         onClick={(e) => e.stopPropagation()}
                         aria-label="Collapse embed"
                     >

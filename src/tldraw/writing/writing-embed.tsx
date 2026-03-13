@@ -147,7 +147,7 @@ export function WritingEmbed (props: {
 			}}
 		>
 			{collapsed && (
-				<div className="ddc_ink_collapsed-bar" onMouseDown={(e) => e.stopPropagation()}>
+				<div className="ddc_ink_collapsed-bar" onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
 					{isEditingTitle ? (
 						<input
 							ref={titleInputRef}
@@ -184,7 +184,9 @@ export function WritingEmbed (props: {
 									props.plugin.settings.closeNoteOnFullscreen ? props.plugin.app.workspace.activeLeaf : null
 								);
 							}}
-							aria-label="Open fullscreen"
+							onMouseDown={(e) => e.stopPropagation()}
+						onClick={(e) => e.stopPropagation()}
+						aria-label="Open fullscreen"
 						>
 							<FullscreenIcon />
 						</button>
@@ -192,6 +194,7 @@ export function WritingEmbed (props: {
 							className="ddc_ink_collapse-btn"
 							onPointerDown={(e) => { e.stopPropagation(); handleCollapsedChange(false); }}
 							onMouseDown={(e) => e.stopPropagation()}
+							onClick={(e) => e.stopPropagation()}
 							aria-label="Expand embed"
 						>
 							<ExpandIcon />

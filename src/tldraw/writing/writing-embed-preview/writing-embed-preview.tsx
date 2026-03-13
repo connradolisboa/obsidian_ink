@@ -67,7 +67,7 @@ const WritingEmbedPreview: React.FC<WritingEmbedPreviewProps> = (props) => {
                 position: 'absolute',
                 width: '100%',
             }}
-            onClick={props.onClick}
+            onClick={(e) => { e.stopPropagation(); props.onClick(e); }}
             onMouseDown={(e) => e.stopPropagation()}
 
             // Not currently doing this cause it can mean users easily lose their undo history
@@ -107,6 +107,7 @@ const WritingEmbedPreview: React.FC<WritingEmbedPreviewProps> = (props) => {
                             e.stopPropagation();
                             props.onFullscreenClick?.();
                         }}
+                        onMouseDown={(e) => e.stopPropagation()}
                         onClick={(e) => e.stopPropagation()}
                         aria-label="Open fullscreen"
                     >
@@ -120,6 +121,7 @@ const WritingEmbedPreview: React.FC<WritingEmbedPreviewProps> = (props) => {
                             e.stopPropagation();
                             props.onCollapseClick?.();
                         }}
+                        onMouseDown={(e) => e.stopPropagation()}
                         onClick={(e) => e.stopPropagation()}
                         aria-label="Collapse embed"
                     >
