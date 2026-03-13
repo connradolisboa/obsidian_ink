@@ -156,30 +156,32 @@ export function applyCommonAncestorStyling(embedEl: HTMLElement) {
 	const scrollerMarginLeft = scrollerStyle.paddingLeft;
 	const scrollerMarginRight = scrollerStyle.paddingRight;
 
-	// Verify the embed block's actual left offset from the scroller matches the padding.
-	// Themes like Minimal use .cm-sizer width constraints (not scroller padding) for their
-	// reading column, so the scroller may have padding while the embed block is already
-	// at the scroller's left edge. Applying a negative margin in that case would push
-	// the embed off-screen to the left.
+	// Verify the embed block's offset from the scroller closely matches the scroller padding.
+	// In the default theme (no readable line length), the content starts at the padding edge,
+	// so negating the padding extends the embed to the scroller edge.
+	// Themes like Minimal use .cm-sizer width constraints + auto margins to center content,
+	// so the embed's offset from the scroller is much larger than the padding. In that case,
+	// applying a negative margin would push the embed off-screen to the left.
 	const scrollerRect = parentPageScrollerEl.getBoundingClientRect();
 	const embedRect = parentEmbedBlockEl.getBoundingClientRect();
-	const embedStartOffsetFromScroller = embedRect.left - scrollerRect.left;
+
 	const startMarginValue = parseFloat(scrollerInlineStartMargin) || 0;
 	const endMarginValue = parseFloat(scrollerInlineEndMargin) || 0;
-	const embedEndOffsetFromScroller = scrollerRect.right - embedRect.right;
+	const embedStartOffset = embedRect.left - scrollerRect.left;
+	const embedEndOffset = scrollerRect.right - embedRect.right;
 
+	// Only negate padding if the embed's offset closely matches the scroller padding
+	// (tolerance of 20px to account for sub-pixel rounding and minor theme adjustments)
 	const pageHasScrollerInlineStartMargin = scrollerInlineStartMargin && scrollerInlineStartMargin !== '0' && scrollerInlineStartMargin !== '0px';
-	if(pageHasScrollerInlineStartMargin && embedStartOffsetFromScroller >= startMarginValue - 8) {
+	if(pageHasScrollerInlineStartMargin && Math.abs(embedStartOffset - startMarginValue) < 20) {
 		let style = parentEmbedBlockEl.getAttribute('style') ?? '';
-		// Negate the scroller margin
 		style += `; margin-inline-start: calc(-1 * ${scrollerInlineStartMargin} + 4px) !important`;
 		parentEmbedBlockEl.setAttribute('style', style);
 	}
 
 	const pageHasScrollerInlineEndMargin = scrollerInlineEndMargin && scrollerInlineEndMargin !== '0' && scrollerInlineEndMargin !== '0px';
-	if(pageHasScrollerInlineEndMargin && embedEndOffsetFromScroller >= endMarginValue - 8) {
+	if(pageHasScrollerInlineEndMargin && Math.abs(embedEndOffset - endMarginValue) < 20) {
 		let style = parentEmbedBlockEl.getAttribute('style') ?? '';
-		// Negate the scroller margin
 		style += `; margin-inline-end: calc(-1 * ${scrollerInlineEndMargin} + 4px) !important`;
 		parentEmbedBlockEl.setAttribute('style', style);
 	}
