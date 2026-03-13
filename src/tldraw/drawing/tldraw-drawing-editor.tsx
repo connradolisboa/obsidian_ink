@@ -106,7 +106,8 @@ export function TldrawDrawingEditor(props: TldrawDrawingEditorProps) {
 
 		const ereader = isEreader();
 		const stylusOnly = props.plugin.settings.stylusOnlyInput || ereader;
-		preventTldrawCanvasesCausingObsidianGestures(editor, { stylusOnly });
+		const fingerSwipeScroll = props.plugin.settings.fingerSwipeScroll;
+		preventTldrawCanvasesCausingObsidianGestures(editor, { stylusOnly, fingerSwipeScroll, nativeCameraInFullscreen: !props.embedded });
 
 		// Use simple constant-width strokes on e-readers
 		const useSimpleStrokes = !props.plugin.settings.writingDynamicStrokeThickness || ereader;

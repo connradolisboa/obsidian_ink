@@ -117,7 +117,7 @@ export function getActivitySummary(entry: HistoryEntry<TLRecord>) {
 	return summary;
 }
 
-export function preventTldrawCanvasesCausingObsidianGestures(tlEditor: Editor, options?: { stylusOnly?: boolean; fingerSwipeScroll?: boolean }) {
+export function preventTldrawCanvasesCausingObsidianGestures(tlEditor: Editor, options?: { stylusOnly?: boolean; fingerSwipeScroll?: boolean; nativeCameraInFullscreen?: boolean }) {
 	const tlContainer = tlEditor.getContainer();
 
 	const tlCanvas = tlContainer.getElementsByClassName('tl-canvas')[0] as HTMLDivElement;
@@ -154,12 +154,63 @@ export function preventTldrawCanvasesCausingObsidianGestures(tlEditor: Editor, o
 		// Skip scrolling when the stylus is active (Boox stylus fires touch events too)
 		if (options?.fingerSwipeScroll) {
 			let touchStartY: number | null = null;
+			let lastPinchDistance: number | null = null;
+			let lastPinchCenter: { x: number; y: number } | null = null;
+
 			tlCanvas.addEventListener('touchstart', (e: TouchEvent) => {
 				if (penIsActive) return;
-				touchStartY = e.touches[0].clientY;
+				if (e.touches.length === 2) {
+					// Two-finger gesture: prepare for pinch-to-zoom / pan
+					const dx = e.touches[1].clientX - e.touches[0].clientX;
+					const dy = e.touches[1].clientY - e.touches[0].clientY;
+					lastPinchDistance = Math.sqrt(dx * dx + dy * dy);
+					lastPinchCenter = {
+						x: (e.touches[0].clientX + e.touches[1].clientX) / 2,
+						y: (e.touches[0].clientY + e.touches[1].clientY) / 2,
+					};
+					touchStartY = null; // Cancel single-finger scroll
+				} else if (e.touches.length === 1) {
+					touchStartY = e.touches[0].clientY;
+				}
 			}, { passive: true });
 			tlCanvas.addEventListener('touchmove', (e: TouchEvent) => {
-				if (penIsActive || touchStartY === null) return;
+				if (penIsActive) return;
+
+				// Two-finger pinch-to-zoom + pan
+				if (e.touches.length === 2) {
+					const dx = e.touches[1].clientX - e.touches[0].clientX;
+					const dy = e.touches[1].clientY - e.touches[0].clientY;
+					const newDistance = Math.sqrt(dx * dx + dy * dy);
+					const newCenter = {
+						x: (e.touches[0].clientX + e.touches[1].clientX) / 2,
+						y: (e.touches[0].clientY + e.touches[1].clientY) / 2,
+					};
+
+					if (lastPinchDistance !== null && lastPinchCenter !== null) {
+						const camera = tlEditor.getCamera();
+						const currentZoom = camera.z || 1;
+						const scale = newDistance / lastPinchDistance;
+						const newZoom = Math.max(0.1, Math.min(8, currentZoom * scale));
+
+						const panX = (newCenter.x - lastPinchCenter.x) / newZoom;
+						const panY = (newCenter.y - lastPinchCenter.y) / newZoom;
+
+						silentlyChangeStore(tlEditor, () => {
+							tlEditor.setCamera({
+								x: camera.x + panX,
+								y: camera.y + panY,
+								z: newZoom,
+							});
+						});
+					}
+
+					lastPinchDistance = newDistance;
+					lastPinchCenter = newCenter;
+					return;
+				}
+
+				// Single-finger scroll
+				if (touchStartY === null) return;
 				const deltaY = touchStartY - e.touches[0].clientY;
 				touchStartY = e.touches[0].clientY;
 
@@ -179,6 +230,8 @@ export function preventTldrawCanvasesCausingObsidianGestures(tlEditor: Editor, o
 			}, { passive: true });
 			tlCanvas.addEventListener('touchend', () => {
 				touchStartY = null;
+				lastPinchDistance = null;
+				lastPinchCenter = null;
 			}, { passive: true });
 		}
 	}
@@ -195,6 +248,9 @@ export function preventTldrawCanvasesCausingObsidianGestures(tlEditor: Editor, o
 			scrollContainer.scrollBy({ top: e.deltaY, behavior: 'auto' });
 			return;
 		}
+
+		// In fullscreen mode, let tldraw handle camera natively if requested
+		if (options?.nativeCameraInFullscreen) return;
 
 		// In fullscreen mode, scroll the camera
 		e.preventDefault();
