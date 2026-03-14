@@ -40,6 +40,7 @@ export class DrawingView extends TextFileView {
     root: null | Root;
     plugin: InkPlugin;
     pageData: InkFileData;
+    focusModeActive: boolean = false;
 
     constructor(leaf: WorkspaceLeaf, plugin: InkPlugin) {
         super(leaf);
@@ -63,10 +64,12 @@ export class DrawingView extends TextFileView {
 
         const viewContent = this.containerEl.children[1];
         viewContent.setAttr('style', 'padding: 0;');
-		
+
+        this.enableFocusMode();
+
         // If a new file is opening in the same leaf, then clear the old one instead of creating a new one
         if(this.root) this.clear();
-        
+
         this.root = createRoot(viewContent);
 		this.root.render(
             <JotaiProvider>
@@ -76,6 +79,7 @@ export class DrawingView extends TextFileView {
 					drawingFile = {this.file}
 					save = {this.saveFile}
 					extendedMenu = {getExtendedOptions(this.plugin, this.file)}
+					onExitFocusMode = {this.focusModeActive ? () => this.disableFocusMode() : undefined}
 				/>
             </JotaiProvider>
         );
@@ -95,6 +99,25 @@ export class DrawingView extends TextFileView {
     clear = (): void => {
         // NOTE: Unmounting forces the store listeners in the React app to stop (Without that, old files can save data into new ones)
         this.root?.unmount();
+        this.disableFocusMode();
+    }
+
+    onunload(): void {
+        this.disableFocusMode();
+    }
+
+    enableFocusMode(): void {
+        if(this.plugin.settings.fullscreenFocusMode && !this.focusModeActive) {
+            this.focusModeActive = true;
+            document.body.classList.add('ddc_ink_focus-mode');
+        }
+    }
+
+    disableFocusMode(): void {
+        if(this.focusModeActive) {
+            this.focusModeActive = false;
+            document.body.classList.remove('ddc_ink_focus-mode');
+        }
     }
 
     // onResize()
