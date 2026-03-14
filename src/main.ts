@@ -7,6 +7,8 @@ import insertExistingWritingFile from './commands/insert-existing-writing-file';
 import insertNewWritingFile from './commands/insert-new-writing-file';
 import { registerWritingView } from './views/writing-view';
 import insertNewDrawingFile from './commands/insert-new-drawing-file';
+import createWritingNote from './commands/create-writing-note';
+import createDrawingNote from './commands/create-drawing-note';
 import insertExistingDrawingFile from './commands/insert-existing-drawing-file';
 import { registerDrawingView } from './views/drawing-view';
 import { registerDrawingEmbed } from './extensions/widgets/drawing-embed-widget';
@@ -104,6 +106,12 @@ export const inkPluginAtom = atom<InkPlugin>();
 
 function implementWritingEmbedActions(plugin: InkPlugin) {
 	plugin.addCommand({
+		id: 'create-writing-note',
+		name: 'New handwriting note',
+		icon: 'write_default',
+		callback: () => createWritingNote(plugin)
+	});
+	plugin.addCommand({
 		id: 'create-handwritten-section',
 		name: 'New handwriting section',
 		icon: 'write_default',
@@ -133,6 +141,12 @@ function implementNotebookEmbedActions(plugin: InkPlugin) {
 }
 
 function implementDrawingEmbedActions(plugin: InkPlugin) {
+	plugin.addCommand({
+		id: 'create-drawing-note',
+		name: 'New drawing note',
+		icon: 'draw_default',
+		callback: () => createDrawingNote(plugin)
+	});
 	plugin.addCommand({
 		id: 'create-drawing-section',
 		name: 'New drawing',

@@ -121,6 +121,18 @@ function insertHighLevelSettings(containerEl: HTMLElement, plugin: InkPlugin, re
 
 	new Setting(containerEl)
 		.setClass('ddc_ink_setting')
+		.setName('Create companion note')
+		.setDesc('When using "New handwriting note" or "New drawing note" commands, create a markdown note containing the embed. When disabled, the ink file is created and opened directly without a companion note.')
+		.addToggle((toggle) => {
+			toggle.setValue(plugin.settings.createCompanionNote);
+			toggle.onChange(async (value) => {
+				plugin.settings.createCompanionNote = value;
+				await plugin.saveSettings();
+			});
+		});
+
+	new Setting(containerEl)
+		.setClass('ddc_ink_setting')
 		.setName('Enable writing')
 		// .setDesc('If disabled, you will still be able to view previously created writing embeds.')
 		.setDesc('If disabled, you will not be able to add new writing embeds and those already embedded will appear as raw code. Existing writing files will be hidden in Obsidian but still exist on disk. Changing this setting will require a restart of Obsidian to take effect.')

@@ -9,6 +9,7 @@ export interface PluginSettings {
 		lastVersionTipRead: string,
 	},
 	// General
+	createCompanionNote: boolean,
 	customAttachmentFolders: boolean,
     noteAttachmentFolderLocation: 'obsidian' | 'root' | 'note',
     notelessAttachmentFolderLocation: 'obsidian' | 'root',
@@ -49,6 +50,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 		lastVersionTipRead: '',
 	},
 	// General
+	createCompanionNote: true,
 	customAttachmentFolders: false,
     noteAttachmentFolderLocation: 'obsidian',
 	notelessAttachmentFolderLocation: 'obsidian',
