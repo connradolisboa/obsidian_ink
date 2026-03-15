@@ -1,3 +1,5 @@
+Forked the original plugin and improved the functionalities for using it with Onyx Boox devices. I recommending using https://github.com/sergeylappo/boox-rapid-draw with the plugin.
+
 # Ink
 A plugin for [Obsidian](https://obsidian.md) that adds the ability to hand write or draw with a stylus between paragraphs in your notes.
 
