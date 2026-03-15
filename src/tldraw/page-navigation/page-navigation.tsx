@@ -8,6 +8,7 @@ import { getCurrentPageIndex, getPageCount, navigateToNextPage, navigateToPrevPa
 
 interface PageNavigationProps {
 	editor?: Editor;
+	getTlEditor?: () => Editor | undefined;
 	linesPerPage: number;
 	topMarginPx?: number;
 	readOnly?: boolean;
@@ -18,52 +19,72 @@ export const PageNavigation: React.FC<PageNavigationProps> = (props) => {
 	const [currentPage, setCurrentPage] = React.useState(0);
 	const [totalPages, setTotalPages] = React.useState(1);
 
+	const getEditor = (): Editor | undefined => {
+		return props.editor ?? props.getTlEditor?.();
+	};
+
 	const syncPageState = React.useCallback(() => {
-		if (!props.editor) return;
-		setCurrentPage(getCurrentPageIndex(props.editor));
-		setTotalPages(getPageCount(props.editor));
-	}, [props.editor]);
+		const editor = getEditor();
+		if (!editor) return;
+		setCurrentPage(getCurrentPageIndex(editor));
+		setTotalPages(getPageCount(editor));
+	}, [props.editor, props.getTlEditor]);
 
 	React.useEffect(() => {
-		if (!props.editor) return;
+		const editor = getEditor();
+		if (!editor) return;
 		syncPageState();
-		const unsub = props.editor.store.listen(() => {
-			if (!props.editor) return;
-			setCurrentPage(getCurrentPageIndex(props.editor));
-			setTotalPages(getPageCount(props.editor));
+
+		let lastPageIndex = getCurrentPageIndex(editor);
+		let lastPageCount = getPageCount(editor);
+
+		const unsub = editor.store.listen(() => {
+			const ed = getEditor();
+			if (!ed) return;
+			const newIndex = getCurrentPageIndex(ed);
+			const newCount = getPageCount(ed);
+			if (newIndex !== lastPageIndex || newCount !== lastPageCount) {
+				lastPageIndex = newIndex;
+				lastPageCount = newCount;
+				setCurrentPage(newIndex);
+				setTotalPages(newCount);
+			}
 		}, { source: 'all', scope: 'all' });
 		return unsub;
-	}, [props.editor]);
+	}, [props.editor, props.getTlEditor]);
 
 	function handlePrev(e: React.PointerEvent) {
 		e.preventDefault();
 		e.stopPropagation();
-		if (!props.editor) return;
-		if (navigateToPrevPage(props.editor, props.topMarginPx)) {
+		const editor = getEditor();
+		if (!editor) return;
+		if (navigateToPrevPage(editor, props.topMarginPx)) {
 			syncPageState();
-			props.onPageChange?.(getCurrentPageIndex(props.editor));
+			props.onPageChange?.(getCurrentPageIndex(editor));
 		}
 	}
 
 	function handleNext(e: React.PointerEvent) {
 		e.preventDefault();
 		e.stopPropagation();
-		if (!props.editor) return;
-		if (navigateToNextPage(props.editor, props.topMarginPx)) {
+		const editor = getEditor();
+		if (!editor) return;
+		if (navigateToNextPage(editor, props.topMarginPx)) {
 			syncPageState();
-			props.onPageChange?.(getCurrentPageIndex(props.editor));
+			props.onPageChange?.(getCurrentPageIndex(editor));
 		}
 	}
 
 	function handleAddPage(e: React.PointerEvent) {
 		e.preventDefault();
 		e.stopPropagation();
-		if (!props.editor) return;
-		const newPageIndex = getPageCount(props.editor);
-		createWritingPage(props.editor, newPageIndex, props.linesPerPage);
-		navigateToNextPage(props.editor, props.topMarginPx);
+		const editor = getEditor();
+		if (!editor) return;
+		const newPageIndex = getPageCount(editor);
+		createWritingPage(editor, newPageIndex, props.linesPerPage);
+		navigateToNextPage(editor, props.topMarginPx);
 		syncPageState();
-		props.onPageChange?.(getCurrentPageIndex(props.editor));
+		props.onPageChange?.(getCurrentPageIndex(editor));
 	}
 
 	const isFirstPage = currentPage === 0;

@@ -3,6 +3,9 @@ A plugin for [Obsidian](https://obsidian.md) that adds the ability to hand write
 
 Hand write or draw directly between paragraphs in your notes using a digital pen, stylus, or Apple pencil. Useful for handwriting, sketches, scribbles, or even math equations and scientific notation. Runs on the tldraw framework and drawing provides an infinite canvas.
 
+## ⚠️ Known Issues - v0.3.5
+**Notebooks feature is not fully working.** The multi-page notebook functionality has reliability issues and may not work as expected. If you encounter problems with notebooks, please consider using single-page writing embeds as a workaround. Updates to address this are in development.
+
 ## 🎥 Demo
 <p align="center">
   <a href="https://www.youtube.com/watch?v=qgir8F7ezNM" target="_blank">
@@ -58,8 +61,10 @@ Below are the high level features in my current development plan along with thei
 <details open>
 <summary>Current feature focus</summary>
 
+- [ ] Fix notebook multi-page functionality and reliability issues.
 - [ ] Ability to reframe embedded drawings.
-- [ ] Pen smoothing enhancements (Not eReader related).
+- [ ] Pen smoothing enhancements.
+- [ ] Support for e-ink devices (Onyx Boox and similar).
 </details>
 
 <details>

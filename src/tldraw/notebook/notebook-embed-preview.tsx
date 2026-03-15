@@ -37,13 +37,16 @@ export const NotebookEmbedPreviewWrapper: React.FC<NotebookEmbedPreviewProps> = 
 
 const NotebookEmbedPreview: React.FC<NotebookEmbedPreviewProps> = (props) => {
     const containerElRef = React.useRef<HTMLDivElement>(null);
+    const onLoadTimeoutRef = React.useRef<NodeJS.Timeout>();
     const setEmbedState = useSetAtom(notebookEmbedStateAtom);
     const [fileSrc, setFileSrc] = React.useState<string>(emptyWritingSvg);
     const [totalPages, setTotalPages] = React.useState(1);
 
     React.useEffect(() => {
         fetchFileData();
-        return () => {}
+        return () => {
+            if (onLoadTimeoutRef.current) clearTimeout(onLoadTimeoutRef.current);
+        }
     })
 
     const currentPage = props.currentPage ?? 0;
@@ -169,7 +172,7 @@ const NotebookEmbedPreview: React.FC<NotebookEmbedPreviewProps> = (props) => {
 
     function onLoad() {
         recalcHeight();
-        setTimeout(() => {
+        onLoadTimeoutRef.current = setTimeout(() => {
             setEmbedState(NotebookEmbedState.preview);
         }, 100);
     }

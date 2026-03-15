@@ -81,7 +81,6 @@ export function TldrawNotebookEditor(props: TldrawNotebookEditorProps) {
 	const shortDelayPostProcessTimeoutRef = useRef<NodeJS.Timeout>();
 	const longDelayPostProcessTimeoutRef = useRef<NodeJS.Timeout>();
 	const tlEditorRef = useRef<Editor>();
-	const [mountedEditor, setMountedEditor] = React.useState<Editor>();
 	const editorWrapperRefEl = useRef<HTMLDivElement>(null);
 	const { stashStaleContent, unstashStaleContent } = useStash(props.plugin);
 	const cameraLimitsRef = useRef<WritingCameraLimits>();
@@ -115,7 +114,6 @@ export function TldrawNotebookEditor(props: TldrawNotebookEditorProps) {
 
 	const handleMount = (_editor: Editor) => {
 		const editor = tlEditorRef.current = _editor;
-		setMountedEditor(editor);
 		setEmbedState(NotebookEmbedState.editor);
 		focusChildTldrawEditor(editorWrapperRefEl.current);
 
@@ -443,7 +441,7 @@ export function TldrawNotebookEditor(props: TldrawNotebookEditorProps) {
 					onStoreChange = {(tlEditor: Editor) => queueOrRunStorePostProcesses(tlEditor)}
 				/>
 				<PageNavigation
-					editor = {mountedEditor}
+					getTlEditor = {getTlEditor}
 					linesPerPage = {linesPerPage}
 					topMarginPx = {props.embedded ? 0 : MENUBAR_HEIGHT_PX}
 					onPageChange = {(pageIndex: number) => {
