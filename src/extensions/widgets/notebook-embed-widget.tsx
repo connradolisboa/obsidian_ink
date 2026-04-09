@@ -2,7 +2,7 @@ import { MarkdownRenderChild, TFile } from "obsidian";
 import * as React from "react";
 import { Root, createRoot } from "react-dom/client";
 import { InkFileData, stringifyPageData } from "src/utils/page-file";
-import { NotebookEmbedData, applyCommonAncestorStyling, removeEmbed } from "src/utils/embed";
+import { NotebookEmbedData, applyCommonAncestorStyling, removeEmbed, resolveInkFileFromEmbed, stringifyEmbedData } from "src/utils/embed";
 import InkPlugin from "src/main";
 import NotebookEmbed from "src/tldraw/notebook/notebook-embed";
 import { NOTEBOOK_EMBED_KEY } from "src/constants";
@@ -35,11 +35,11 @@ export function registerNotebookEmbed(plugin: InkPlugin) {
 					if(sectionInfo?.lineStart === undefined || sectionInfo.lineEnd === undefined) return;
 					const editorStart = { line: sectionInfo.lineStart + 1, ch: 0 };
 					const editorEnd = { line: sectionInfo.lineEnd, ch: 0 };
-					cmEditor.replaceRange(JSON.stringify(data, null, '\t') + '\n', editorStart, editorEnd);
+					cmEditor.replaceRange(stringifyEmbedData(data as any) + '\n', editorStart, editorEnd);
 				},
 			}
-			if(embedData.filepath) {
-				ctx.addChild(new NotebookEmbedWidget(el, plugin, embedData, embedCtrls));
+			if(embedData.link || embedData.filepath) {
+				ctx.addChild(new NotebookEmbedWidget(el, plugin, embedData, embedCtrls, ctx.sourcePath));
 			}
 		}
 	);
@@ -50,6 +50,7 @@ class NotebookEmbedWidget extends MarkdownRenderChild {
 	plugin: InkPlugin;
 	embedData: NotebookEmbedData;
 	embedCtrls: EmbedCtrls;
+	sourcePath: string;
 	root: Root;
 	fileRef: TFile | null;
 
@@ -58,24 +59,25 @@ class NotebookEmbedWidget extends MarkdownRenderChild {
 		plugin: InkPlugin,
 		embedData: NotebookEmbedData,
 		embedCtrls: EmbedCtrls,
+		sourcePath: string,
 	) {
 		super(el);
 		this.el = el;
 		this.plugin = plugin;
 		this.embedData = embedData;
 		this.embedCtrls = embedCtrls;
+		this.sourcePath = sourcePath;
 	}
 
 	async onload() {
-		const v = this.plugin.app.vault;
-		this.fileRef = v.getAbstractFileByPath(this.embedData.filepath) as TFile;
+		this.fileRef = resolveInkFileFromEmbed(this.plugin, this.embedData, this.sourcePath);
 
 		if( !this.fileRef || !(this.fileRef instanceof TFile) ) {
-			this.el.createEl('p').textContent = 'Ink notebook file not found: ' + this.embedData.filepath;
+			this.el.createEl('p').textContent = 'Ink notebook file not found: ' + (this.embedData.link ?? this.embedData.filepath);
 			return;
 		}
 
-		const pageDataStr = await v.read(this.fileRef);
+		const pageDataStr = await this.plugin.app.vault.read(this.fileRef);
 		const pageData = JSON.parse(pageDataStr) as InkFileData;
 
 		if(!this.root) this.root = createRoot(this.el);
@@ -118,25 +120,21 @@ class NotebookEmbedWidget extends MarkdownRenderChild {
 		await this.plugin.app.vault.modify(this.fileRef, pageDataStr);
 	}
 
-	renameNotebookFile = async (title: string) => {
+	renameNotebookFile = async (newBasename: string) => {
 		if(!this.fileRef) return;
 
 		const oldPath = this.fileRef.path;
 		const dir = oldPath.substring(0, oldPath.lastIndexOf('/'));
 		const ext = this.fileRef.extension;
-
-		const oldBasename = this.fileRef.basename;
-		const spaceIndex = oldBasename.indexOf(' ');
-		const datePart = spaceIndex >= 0 ? oldBasename.substring(0, spaceIndex) : oldBasename;
-
-		const newBasename = title ? `${datePart} ${title}` : datePart;
 		const newPath = `${dir}/${newBasename}.${ext}`;
 
 		if(newPath === oldPath) return;
 
 		await this.plugin.app.vault.rename(this.fileRef, newPath);
 
-		const updatedData = { ...this.embedData, filepath: newPath, title: title || undefined };
+		const updatedData = { ...this.embedData, link: `[[${newBasename}.${ext}]]` };
+		delete updatedData.filepath;
+		delete updatedData.title;
 		this.embedData = updatedData;
 		this.embedCtrls.updateEmbedData(updatedData);
 	}

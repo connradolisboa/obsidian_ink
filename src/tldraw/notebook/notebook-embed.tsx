@@ -61,7 +61,7 @@ export function NotebookEmbed (props: {
 
 	const setEmbedState = useSetAtom(notebookEmbedStateAtom);
 	const [collapsed, setCollapsed] = useState(props.embedData?.collapsed ?? false);
-	const [title, setTitle] = useState(props.embedData?.title ?? 'Notebook');
+	const [title, setTitle] = useState(props.notebookFileRef.basename);
 	const [isEditingTitle, setIsEditingTitle] = useState(false);
 	const titleInputRef = useRef<HTMLInputElement>(null);
 	const [currentPage, setCurrentPage] = useState(props.embedData?.currentPage ?? 0);
@@ -72,10 +72,10 @@ export function NotebookEmbed (props: {
 	}
 
 	function handleTitleCommit(newTitle: string) {
-		const trimmed = newTitle.trim() || 'Notebook';
+		const trimmed = newTitle.trim() || props.notebookFileRef.basename;
 		setTitle(trimmed);
 		setIsEditingTitle(false);
-		props.onTitleChange?.(trimmed === 'Notebook' ? '' : trimmed);
+		props.onTitleChange?.(trimmed);
 	}
 
 	function handlePageChange(pageIndex: number) {

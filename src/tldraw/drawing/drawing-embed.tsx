@@ -71,7 +71,7 @@ export function DrawingEmbed (props: {
 
 	const setEmbedState = useSetAtom(embedStateAtom);
 	const [collapsed, setCollapsed] = useState(props.embedData?.collapsed ?? false);
-	const [title, setTitle] = useState(props.embedData?.title ?? 'Drawing');
+	const [title, setTitle] = useState(props.drawingFileRef.basename);
 	const [isEditingTitle, setIsEditingTitle] = useState(false);
 	const titleInputRef = useRef<HTMLInputElement>(null);
 
@@ -81,10 +81,10 @@ export function DrawingEmbed (props: {
 	}
 
 	function handleTitleCommit(newTitle: string) {
-		const trimmed = newTitle.trim() || 'Drawing';
+		const trimmed = newTitle.trim() || props.drawingFileRef.basename;
 		setTitle(trimmed);
 		setIsEditingTitle(false);
-		props.onTitleChange?.(trimmed === 'Drawing' ? '' : trimmed);
+		props.onTitleChange?.(trimmed);
 	}
 
 	// On first mount

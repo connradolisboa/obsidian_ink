@@ -1,5 +1,5 @@
 import './ddc-library/settings-styles.scss';
-import { Editor, Notice, Plugin, addIcon } from 'obsidian';
+import { Editor, Notice, Plugin, TFile, addIcon } from 'obsidian';
 import { DEFAULT_SETTINGS, PluginSettings } from 'src/types/plugin-settings';
 import { registerSettingsTab } from './tabs/settings-tab/settings-tab';
 import {registerWritingEmbed} from './extensions/widgets/writing-embed-widget'
@@ -23,6 +23,7 @@ import * as semver from "semver";
 import { showVersionNotice } from './notices/version-notices';
 import { atom, useSetAtom } from 'jotai';
 import { debug } from './utils/log-to-console';
+import { updateInkEmbedLinksInVault } from './utils/embed';
 import { drawDefaultSvgStr, writeDefaultSvgStr, writeExistingSvgStr, writePasteSvgStr } from './graphics/icons/command-icons';
 import { drawExistingSvgStr, drawPasteSvgStr } from './graphics/icons/command-icons';
 
@@ -75,6 +76,12 @@ export default class InkPlugin extends Plugin {
 		}
 		
 		registerSettingsTab(this);
+
+		this.registerEvent(this.app.vault.on('rename', async (file, oldPath) => {
+			if (!(file instanceof TFile)) return;
+			if (!['writing', 'drawing', 'notebook'].includes(file.extension)) return;
+			await updateInkEmbedLinksInVault(this, file.path, oldPath);
+		}));
 
 		// // If the plugin hooks up any global DOM events (on parts of the app that doesn't belong to this plugin)
 		// // Using this function will automatically remove the event listener when this plugin is disabled.

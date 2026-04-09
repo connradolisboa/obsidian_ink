@@ -3,7 +3,7 @@ import { EditorPosition, MarkdownPostProcessorContext, MarkdownRenderChild, TFil
 import * as React from "react";
 import { Root, createRoot } from "react-dom/client";
 import { InkFileData, stringifyPageData } from "src/utils/page-file";
-import { DrawingEmbedData, applyCommonAncestorStyling, rebuildDrawingEmbed, removeEmbed, stringifyEmbedData } from "src/utils/embed";
+import { DrawingEmbedData, applyCommonAncestorStyling, rebuildDrawingEmbed, removeEmbed, resolveInkFileFromEmbed, stringifyEmbedData } from "src/utils/embed";
 import InkPlugin from "src/main";
 import DrawingEmbed from "src/tldraw/drawing/drawing-embed";
 import { DRAW_EMBED_KEY } from "src/constants";
@@ -32,8 +32,8 @@ export function registerDrawingEmbed(plugin: InkPlugin) {
 			const embedCtrls: EmbedCtrls = {
 				removeEmbed: () => removeEmbed(plugin, ctx, el),
 			}
-			if(embedData.filepath) {
-				ctx.addChild(new DrawingEmbedWidget(el, plugin, embedData, embedCtrls, (newEmbedData) => updateEmbed(plugin, ctx, el, newEmbedData)));
+			if(embedData.link || embedData.filepath) {
+				ctx.addChild(new DrawingEmbedWidget(el, plugin, embedData, embedCtrls, ctx.sourcePath, (newEmbedData) => updateEmbed(plugin, ctx, el, newEmbedData)));
 			}
 		}
 	);
@@ -77,6 +77,7 @@ class DrawingEmbedWidget extends MarkdownRenderChild {
 	plugin: InkPlugin;
 	embedData: DrawingEmbedData;
 	embedCtrls: EmbedCtrls;
+	sourcePath: string;
 	root: Root;
 	fileRef: TFile | null;
 	updateEmbed: Function;
@@ -86,6 +87,7 @@ class DrawingEmbedWidget extends MarkdownRenderChild {
 		plugin: InkPlugin,
 		embedData: DrawingEmbedData,
 		embedCtrls: EmbedCtrls,
+		sourcePath: string,
 		updateEmbed: (embedData: DrawingEmbedData) => void,
 	) {
 		super(el);
@@ -93,13 +95,14 @@ class DrawingEmbedWidget extends MarkdownRenderChild {
 		this.plugin = plugin;
 		this.embedData = embedData;
 		this.embedCtrls = embedCtrls;
+		this.sourcePath = sourcePath;
 		this.updateEmbed = updateEmbed;
 	}
 
 	async onload() {
 		const v = this.plugin.app.vault;
-		this.fileRef = v.getAbstractFileByPath(this.embedData.filepath) as TFile;
-		
+		this.fileRef = resolveInkFileFromEmbed(this.plugin, this.embedData, this.sourcePath);
+
 		if( !this.fileRef || !(this.fileRef instanceof TFile) ) {
 			this.el.createEl('p').textContent = 'Ink drawing file not found.';
 			return;
@@ -158,25 +161,21 @@ class DrawingEmbedWidget extends MarkdownRenderChild {
 		this.updateEmbed(newEmbedData);
 	}
 
-	renameDrawingFile = async (title: string) => {
+	renameDrawingFile = async (newBasename: string) => {
 		if(!this.fileRef) return;
 
 		const oldPath = this.fileRef.path;
 		const dir = oldPath.substring(0, oldPath.lastIndexOf('/'));
 		const ext = this.fileRef.extension;
-
-		const oldBasename = this.fileRef.basename;
-		const spaceIndex = oldBasename.indexOf(' ');
-		const datePart = spaceIndex >= 0 ? oldBasename.substring(0, spaceIndex) : oldBasename;
-
-		const newBasename = title ? `${datePart} ${title}` : datePart;
 		const newPath = `${dir}/${newBasename}.${ext}`;
 
 		if(newPath === oldPath) return;
 
 		await this.plugin.app.vault.rename(this.fileRef, newPath);
 
-		const updatedData = { ...this.embedData, filepath: newPath, title: title || undefined };
+		const updatedData = { ...this.embedData, link: `[[${newBasename}.${ext}]]` };
+		delete updatedData.filepath;
+		delete updatedData.title;
 		this.embedData = updatedData;
 		this.updateEmbed(updatedData);
 	}

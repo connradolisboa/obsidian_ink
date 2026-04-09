@@ -8,7 +8,8 @@ import InkPlugin from "src/main";
 
 export type WritingEmbedData = {
 	versionAtEmbed: string;
-	filepath: string;
+	link?: string;
+	filepath?: string; // legacy — kept for backward compat with old embeds
 	transcript?: string;
 	collapsed?: boolean;
 	title?: string;
@@ -19,15 +20,16 @@ export type WritingEmbedData = {
 ///////
 
 export const buildWritingEmbed = (filepath: string, transcript?: string) => {
+	const basename = filepath.split('/').pop() ?? filepath;
 	let embedContent: WritingEmbedData = {
 		versionAtEmbed: PLUGIN_VERSION,
-		filepath,
+		link: `[[${basename}]]`,
 		// transcript,
 	}
 
 	let embedStr = "";
     embedStr += "\n```" + WRITE_EMBED_KEY;
-    embedStr += "\n" + JSON.stringify(embedContent, null, '\t');
+    embedStr += "\n" + formatEmbedJson(embedContent as Record<string, unknown>);
     embedStr += "\n```";
 	
 	// Adds a blank line at the end so it's easy to place the cursor after
@@ -41,21 +43,23 @@ export const buildWritingEmbed = (filepath: string, transcript?: string) => {
 
 export type NotebookEmbedData = {
 	versionAtEmbed: string;
-	filepath: string;
+	link?: string;
+	filepath?: string; // legacy — kept for backward compat with old embeds
 	collapsed?: boolean;
 	title?: string;
 	currentPage?: number;
 };
 
 export const buildNotebookEmbed = (filepath: string) => {
+	const basename = filepath.split('/').pop() ?? filepath;
 	let embedContent: NotebookEmbedData = {
 		versionAtEmbed: PLUGIN_VERSION,
-		filepath,
+		link: `[[${basename}]]`,
 	}
 
 	let embedStr = "";
     embedStr += "\n```" + NOTEBOOK_EMBED_KEY;
-    embedStr += "\n" + JSON.stringify(embedContent, null, '\t');
+    embedStr += "\n" + formatEmbedJson(embedContent as Record<string, unknown>);
     embedStr += "\n```";
     embedStr += "\n";
 
@@ -67,7 +71,8 @@ export const buildNotebookEmbed = (filepath: string) => {
 
 export type DrawingEmbedData = {
 	versionAtEmbed: string;
-	filepath: string;
+	link?: string;
+	filepath?: string; // legacy — kept for backward compat with old embeds
 	width?: number,
 	aspectRatio?: number,
 	collapsed?: boolean,
@@ -75,16 +80,17 @@ export type DrawingEmbedData = {
 };
 
 export const buildDrawingEmbed = (filepath: string) => {
+	const basename = filepath.split('/').pop() ?? filepath;
 	let embedContent: DrawingEmbedData = {
 		versionAtEmbed: PLUGIN_VERSION,
-		filepath,
+		link: `[[${basename}]]`,
 		width: DRAWING_INITIAL_WIDTH,
 		aspectRatio: DRAWING_INITIAL_ASPECT_RATIO,
 	}
 
 	let embedStr = "";
     embedStr += "\n```" + DRAW_EMBED_KEY;
-    embedStr += "\n" + JSON.stringify(embedContent, null, '\t');
+    embedStr += "\n" + formatEmbedJson(embedContent as Record<string, unknown>);
     embedStr += "\n```";
 
 	// Adds a blank line at the end so it's easy to place the cursor after
@@ -93,8 +99,53 @@ export const buildDrawingEmbed = (filepath: string) => {
 	return embedStr;
 };
 
+/**
+ * Resolves a TFile from embed data, supporting both new `link` (wikilink) and legacy `filepath` formats.
+ */
+export function resolveInkFileFromEmbed(
+	plugin: InkPlugin,
+	embedData: { link?: string; filepath?: string },
+	sourcePath: string
+): import('obsidian').TFile | null {
+	if (embedData.link) {
+		const linktext = embedData.link.replace(/^\[\[|\]\]$/g, '');
+		return plugin.app.metadataCache.getFirstLinkpathDest(linktext, sourcePath) as import('obsidian').TFile | null;
+	}
+	if (embedData.filepath) {
+		return plugin.app.vault.getAbstractFileByPath(embedData.filepath) as import('obsidian').TFile | null;
+	}
+	return null;
+}
+
+/**
+ * When an ink file is renamed, scans all markdown files and updates the [[wikilink]] inside embed code blocks.
+ */
+export async function updateInkEmbedLinksInVault(plugin: InkPlugin, newPath: string, oldPath: string) {
+	const oldBasename = oldPath.split('/').pop();
+	const newBasename = newPath.split('/').pop();
+	if (!oldBasename || !newBasename || oldBasename === newBasename) return;
+
+	const oldLink = `[[${oldBasename}]]`;
+	const newLink = `[[${newBasename}]]`;
+
+	const markdownFiles = plugin.app.vault.getMarkdownFiles();
+	for (const mdFile of markdownFiles) {
+		const content = await plugin.app.vault.read(mdFile);
+		if (!content.includes(oldLink)) continue;
+		await plugin.app.vault.modify(mdFile, content.split(oldLink).join(newLink));
+	}
+}
+
+/** Produces a compact single-line JSON string with spaces after : and , for readability. */
+function formatEmbedJson(obj: Record<string, unknown>): string {
+	const pairs = Object.entries(obj)
+		.filter(([, v]) => v !== undefined)
+		.map(([k, v]) => `"${k}": ${JSON.stringify(v)}`);
+	return '{' + pairs.join(', ') + '}';
+}
+
 export function stringifyEmbedData(embedData: DrawingEmbedData): string {
-	return JSON.stringify(embedData, null, '\t');
+	return formatEmbedJson(embedData as Record<string, unknown>);
 }
 export const rebuildDrawingEmbed = (embedData: DrawingEmbedData) => {
 	let embedStr = "";
@@ -124,7 +175,7 @@ export function updateWritingEmbedData(plugin: InkPlugin, ctx: MarkdownPostProce
 		ch: 0,
 	}
 
-	cmEditor.replaceRange(JSON.stringify(embedData, null, '\t') + '\n', editorStart, editorEnd);
+	cmEditor.replaceRange(formatEmbedJson(embedData as Record<string, unknown>) + '\n', editorStart, editorEnd);
 }
 
 // This function came from Notion like tables code

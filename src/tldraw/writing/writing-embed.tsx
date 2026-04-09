@@ -70,7 +70,7 @@ export function WritingEmbed (props: {
 
 	const setEmbedState = useSetAtom(embedStateAtom);
 	const [collapsed, setCollapsed] = useState(props.embedData?.collapsed ?? false);
-	const [title, setTitle] = useState(props.embedData?.title ?? 'Writing');
+	const [title, setTitle] = useState(props.writingFileRef.basename);
 	const [isEditingTitle, setIsEditingTitle] = useState(false);
 	const titleInputRef = useRef<HTMLInputElement>(null);
 
@@ -80,10 +80,10 @@ export function WritingEmbed (props: {
 	}
 
 	function handleTitleCommit(newTitle: string) {
-		const trimmed = newTitle.trim() || 'Writing';
+		const trimmed = newTitle.trim() || props.writingFileRef.basename;
 		setTitle(trimmed);
 		setIsEditingTitle(false);
-		props.onTitleChange?.(trimmed === 'Writing' ? '' : trimmed);
+		props.onTitleChange?.(trimmed);
 	}
 
 	// On first mount
