@@ -1,5 +1,5 @@
 import { Editor, HistoryEntry, TLStoreSnapshot, TLRecord, TLShape, TLShapeId, TLUnknownShape, setUserPreferences, Box, TLEditorSnapshot } from "@tldraw/tldraw";
-import { WRITE_STROKE_LIMIT, WRITING_LINE_HEIGHT, WRITING_MIN_PAGE_HEIGHT, WRITING_PAGE_WIDTH } from "src/constants";
+import { MENUBAR_HEIGHT_PX, WRITE_STROKE_LIMIT, WRITING_LINE_HEIGHT, WRITING_MIN_PAGE_HEIGHT, WRITING_PAGE_WIDTH } from "src/constants";
 import { useRef } from 'react';
 import InkPlugin from "src/main";
 import { WritingContainer } from "src/tldraw/writing-shapes/writing-container";
@@ -224,8 +224,10 @@ export function preventTldrawCanvasesCausingObsidianGestures(tlEditor: Editor, o
 				// In fullscreen mode, move the tldraw camera
 				const camera = tlEditor.getCamera();
 				const zoom = camera.z || 1;
+				const { yMin: touchYMin, yMax: touchYMax } = getWritingCameraYBounds(tlEditor);
+				const newY = Math.max(touchYMin, Math.min(touchYMax, camera.y - deltaY / zoom));
 				silentlyChangeStore(tlEditor, () => {
-					tlEditor.setCamera({ x: camera.x, y: camera.y - deltaY / zoom, z: camera.z });
+					tlEditor.setCamera({ x: camera.x, y: newY, z: camera.z });
 				});
 			}, { passive: true });
 			tlCanvas.addEventListener('touchend', () => {
@@ -257,8 +259,10 @@ export function preventTldrawCanvasesCausingObsidianGestures(tlEditor: Editor, o
 		e.stopPropagation();
 		const camera = tlEditor.getCamera();
 		const zoom = camera.z || 1;
+		const { yMin, yMax } = getWritingCameraYBounds(tlEditor);
+		const newY = Math.max(yMin, Math.min(yMax, camera.y - e.deltaY / zoom));
 		silentlyChangeStore(tlEditor, () => {
-			tlEditor.setCamera({ x: camera.x, y: camera.y - e.deltaY / zoom, z: camera.z });
+			tlEditor.setCamera({ x: camera.x, y: newY, z: camera.z });
 		});
 	}, { passive: false });
 }
@@ -320,13 +324,25 @@ export function initWritingCameraLimits(editor: Editor): WritingCameraLimits {
 	}
 }
 
-export function restrictWritingCamera(editor: Editor, cameraLimits: WritingCameraLimits) {
-
+export function getWritingCameraYBounds(editor: Editor): { yMin: number; yMax: number } {
 	const bounds = editor.getCurrentPageBounds();
-	if (!bounds) return;
+	const zoom = editor.getZoomLevel();
+	const viewportH = editor.getViewportScreenBounds().h;
+	const BOTTOM_MARGIN_PX = 50;
 
-	const yMin = bounds.minY - 500;
-	const yMax = bounds.maxY + 1000;
+	// Upper limit: can't scroll above where the first line is visible (below menubar)
+	const yMax = MENUBAR_HEIGHT_PX;
+
+	// Lower limit: last line of content must remain on screen
+	const yMinRaw = bounds ? viewportH - BOTTOM_MARGIN_PX - bounds.maxY * zoom : yMax;
+	// If document fits entirely on screen, yMin >= yMax, so clamp to yMax (no scrolling needed)
+	const yMin = Math.min(yMax, yMinRaw);
+
+	return { yMin, yMax };
+}
+
+export function restrictWritingCamera(editor: Editor, cameraLimits: WritingCameraLimits) {
+	const { yMin, yMax } = getWritingCameraYBounds(editor);
 
 	let x = editor.getCamera().x;
 	let y = editor.getCamera().y;
