@@ -28,6 +28,7 @@ export interface PluginSettings {
 	fullscreenFocusMode: boolean,
 	closeNoteOnFullscreen: boolean,
 	writingManualLineAdd: boolean,
+	writingManualLineAddCount: number,
 	writingLinesWhenLocked: boolean,
 	writingBackgroundWhenLocked: boolean,
 	// Notebook specific
@@ -69,6 +70,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 	fullscreenFocusMode: false,
 	closeNoteOnFullscreen: false,
 	writingManualLineAdd: false,
+	writingManualLineAddCount: 5,
 	writingLinesWhenLocked: true,
 	writingBackgroundWhenLocked: true,
 	// Notebook specific

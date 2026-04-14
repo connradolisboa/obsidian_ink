@@ -117,7 +117,7 @@ export function getActivitySummary(entry: HistoryEntry<TLRecord>) {
 	return summary;
 }
 
-export function preventTldrawCanvasesCausingObsidianGestures(tlEditor: Editor, options?: { stylusOnly?: boolean; fingerSwipeScroll?: boolean; nativeCameraInFullscreen?: boolean }) {
+export function preventTldrawCanvasesCausingObsidianGestures(tlEditor: Editor, options?: { stylusOnly?: boolean | (() => boolean); fingerSwipeScroll?: boolean; nativeCameraInFullscreen?: boolean }) {
 	const tlContainer = tlEditor.getContainer();
 
 	const tlCanvas = tlContainer.getElementsByClassName('tl-canvas')[0] as HTMLDivElement;
@@ -128,11 +128,21 @@ export function preventTldrawCanvasesCausingObsidianGestures(tlEditor: Editor, o
 		e.stopPropagation();
 	})
 
-	// Palm rejection: block touch events so only stylus (pen) input reaches tldraw
-	if (options?.stylusOnly) {
+	// Helper to evaluate stylusOnly dynamically — supports static boolean or runtime getter
+	const isStylusOnly = (): boolean => {
+		const v = options?.stylusOnly;
+		if (typeof v === 'function') return v();
+		return v ?? false;
+	};
+
+	// Palm rejection: block touch events so only stylus (pen) input reaches tldraw.
+	// Always register listeners when stylusOnly is provided (boolean true or getter function)
+	// so it can be toggled at runtime without re-mounting the editor.
+	if (options?.stylusOnly !== undefined && options?.stylusOnly !== false) {
 		let penIsActive = false;
 
 		const blockTouch = (e: PointerEvent) => {
+			if (!isStylusOnly()) return; // dynamic: no-op when finger writing is enabled
 			if (e.pointerType === 'touch') {
 				e.preventDefault();
 				e.stopPropagation();
@@ -158,6 +168,7 @@ export function preventTldrawCanvasesCausingObsidianGestures(tlEditor: Editor, o
 			let lastPinchCenter: { x: number; y: number } | null = null;
 
 			tlCanvas.addEventListener('touchstart', (e: TouchEvent) => {
+				if (!isStylusOnly()) return; // don't intercept when finger drawing is enabled
 				if (penIsActive) return;
 				if (e.touches.length === 2) {
 					// Two-finger gesture: prepare for pinch-to-zoom / pan
@@ -174,6 +185,7 @@ export function preventTldrawCanvasesCausingObsidianGestures(tlEditor: Editor, o
 				}
 			}, { passive: true });
 			tlCanvas.addEventListener('touchmove', (e: TouchEvent) => {
+				if (!isStylusOnly()) return; // don't intercept when finger drawing is enabled
 				if (penIsActive) return;
 
 				// Two-finger pinch-to-zoom + pan
@@ -781,10 +793,14 @@ interface svgObj {
 
 export async function getWritingSvg(editor: Editor): Promise<svgObj | undefined> {
 	let svgObj: undefined | svgObj;
+
+	// Save height before tightly resizing so manually added lines are restored after SVG generation
+	const savedHeight = getWritingContainerShape(editor)?.props.h;
+
 	resizeWritingTemplateTightly(editor);
 	const allShapeIds = Array.from(editor.getCurrentPageShapeIds().values());
 	svgObj = await editor.getSvgString(allShapeIds);
-	resizeWritingTemplateInvitingly(editor);
+	resizeWritingTemplateInvitingly(editor, undefined, savedHeight);
 	return svgObj;
 }
 
@@ -873,7 +889,7 @@ export function cropWritingStrokeHeightInvitingly(height: number): number {
  * Add excess space under writing strokes to to enable further writing.
  * Good for while in editing mode.
  */
-export const resizeWritingTemplateInvitingly = (editor: Editor, pageIndex?: number) => {
+export const resizeWritingTemplateInvitingly = (editor: Editor, pageIndex?: number, minHeight?: number) => {
 	verbose('resizeWritingTemplateInvitingly');
 
 	let contentBounds = getAllStrokeBounds(editor);
@@ -883,10 +899,13 @@ export const resizeWritingTemplateInvitingly = (editor: Editor, pageIndex?: numb
 
 	const writingLinesShape = getWritingLinesShape(editor, pageIndex);
 	const writingContainerShape = getWritingContainerShape(editor, pageIndex);
-	
+
 	if(!writingLinesShape) return;
 	if(!writingContainerShape) return;
-	
+
+	// Respect minHeight so manually added lines are not discarded
+	const finalH = minHeight !== undefined ? Math.max(contentBounds.h, minHeight) : contentBounds.h;
+
 	silentlyChangeStore( editor, () => {
 		unlockShape(editor, writingContainerShape);
 		unlockShape(editor, writingLinesShape);
@@ -895,20 +914,20 @@ export const resizeWritingTemplateInvitingly = (editor: Editor, pageIndex?: numb
 			id: writingContainerShape.id,
 			type: writingContainerShape.type,
 			props: {
-				h: contentBounds.h,
+				h: finalH,
 			}
 		})
 		editor.updateShape({
 			id: writingLinesShape.id,
 			type: writingLinesShape.type,
 			props: {
-				h: contentBounds.h,
+				h: finalH,
 			}
 		})
 		lockShape(editor, writingContainerShape);
 		lockShape(editor, writingLinesShape);
 	})
-	
+
 }
 
 /***

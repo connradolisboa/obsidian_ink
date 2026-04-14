@@ -5,6 +5,7 @@ import { EraseIcon } from "src/graphics/icons/erase-icon";
 import { SelectIcon } from "src/graphics/icons/select-icon";
 import { UndoIcon } from "src/graphics/icons/undo-icon";
 import { RedoIcon } from "src/graphics/icons/redo-icon";
+import { HandIcon } from "src/graphics/icons/hand-icon";
 import { Editor } from "@tldraw/tldraw";
 import { Activity, getActivityType, silentlyChangeStore } from "src/utils/tldraw-helpers";
 import classNames from "classnames";
@@ -20,6 +21,8 @@ export enum tool {
 interface WritingMenuProps {
     getTlEditor: () => Editor | undefined,
     onStoreChange: (elEditor: Editor) => void,
+    stylusOnly: boolean,
+    onToggleStylusOnly: () => void,
 }
 
 export const WritingMenu = (props: WritingMenuProps) => {
@@ -112,11 +115,17 @@ export const WritingMenu = (props: WritingMenuProps) => {
                 >
                     <EraseIcon/>
                 </button>
+                <button
+                    onPointerDown={props.onToggleStylusOnly}
+                    disabled={!props.stylusOnly}
+                    aria-label={props.stylusOnly ? "Stylus only — tap to allow finger writing" : "Finger writing enabled — tap for stylus only"}
+                >
+                    <HandIcon/>
+                </button>
             </div>
             <div
                 className='ink_other-menu'
             >
-            
             </div>
         </div>
     </>;

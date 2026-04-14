@@ -89,6 +89,16 @@ export function TldrawNotebookEditor(props: TldrawNotebookEditorProps) {
 	const linesPerPage = props.plugin.settings.notebookLinesPerPage;
 	const pageHeight = linesPerPage * NOTEBOOK_LINE_HEIGHT;
 
+	const initialStylusOnly = props.plugin.settings.stylusOnlyInput || isEreader();
+	const stylusOnlyRef = useRef<boolean>(initialStylusOnly);
+	const [stylusOnly, setStylusOnly] = React.useState<boolean>(initialStylusOnly);
+
+	const toggleStylusOnly = () => {
+		const next = !stylusOnlyRef.current;
+		stylusOnlyRef.current = next;
+		setStylusOnly(next);
+	};
+
 	// On mount
 	React.useEffect( ()=> {
 		verbose('NOTEBOOK EDITOR mounted');
@@ -126,9 +136,9 @@ export function TldrawNotebookEditor(props: TldrawNotebookEditorProps) {
 		}
 
 		const ereader = isEreader();
-		const stylusOnly = props.plugin.settings.stylusOnlyInput || ereader;
 		const fingerSwipeScroll = props.plugin.settings.fingerSwipeScroll;
-		preventTldrawCanvasesCausingObsidianGestures(editor, { stylusOnly, fingerSwipeScroll });
+		// Pass a getter so the event listeners can check the live value when toggled at runtime
+		preventTldrawCanvasesCausingObsidianGestures(editor, { stylusOnly: () => stylusOnlyRef.current, fingerSwipeScroll });
 
 		setEreaderStreamline(props.plugin.settings.writingStreamline);
 
@@ -394,6 +404,8 @@ export function TldrawNotebookEditor(props: TldrawNotebookEditorProps) {
 				<WritingMenu
 					getTlEditor = {getTlEditor}
 					onStoreChange = {(tlEditor: Editor) => queueOrRunStorePostProcesses(tlEditor)}
+					stylusOnly = {stylusOnly}
+					onToggleStylusOnly = {toggleStylusOnly}
 				/>
 				{props.embedded && props.extendedMenu && (
 					<ExtendedWritingMenu

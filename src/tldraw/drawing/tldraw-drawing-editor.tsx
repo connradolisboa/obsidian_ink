@@ -78,7 +78,17 @@ export function TldrawDrawingEditor(props: TldrawDrawingEditorProps) {
 	const longDelayPostProcessTimeoutRef = useRef<NodeJS.Timeout>();
 	const tlEditorRef = useRef<Editor>();
 	const editorWrapperRefEl = useRef<HTMLDivElement>(null);
-	
+
+	const initialStylusOnly = props.plugin.settings.stylusOnlyInput || isEreader();
+	const stylusOnlyRef = useRef<boolean>(initialStylusOnly);
+	const [stylusOnly, setStylusOnly] = React.useState<boolean>(initialStylusOnly);
+
+	const toggleStylusOnly = () => {
+		const next = !stylusOnlyRef.current;
+		stylusOnlyRef.current = next;
+		setStylusOnly(next);
+	};
+
 	// On mount
 	React.useEffect( ()=> {
 		verbose('EDITOR mounted');
@@ -106,9 +116,9 @@ export function TldrawDrawingEditor(props: TldrawDrawingEditorProps) {
 		focusChildTldrawEditor(editorWrapperRefEl.current);
 
 		const ereader = isEreader();
-		const stylusOnly = props.plugin.settings.stylusOnlyInput || ereader;
 		const fingerSwipeScroll = props.plugin.settings.fingerSwipeScroll;
-		preventTldrawCanvasesCausingObsidianGestures(editor, { stylusOnly, fingerSwipeScroll, nativeCameraInFullscreen: !props.embedded });
+		// Pass a getter so the event listeners can check the live value when toggled at runtime
+		preventTldrawCanvasesCausingObsidianGestures(editor, { stylusOnly: () => stylusOnlyRef.current, fingerSwipeScroll, nativeCameraInFullscreen: !props.embedded });
 
 		// Use simple constant-width strokes on e-readers
 		const useSimpleStrokes = !props.plugin.settings.writingDynamicStrokeThickness || ereader;
@@ -364,6 +374,8 @@ export function TldrawDrawingEditor(props: TldrawDrawingEditorProps) {
 					getTlEditor = {getTlEditor}
 					onStoreChange = {(tlEditor: Editor) => queueOrRunStorePostProcesses(tlEditor)}
 					embedded = {props.embedded}
+					stylusOnly = {stylusOnly}
+					onToggleStylusOnly = {toggleStylusOnly}
 				/>
 				{props.embedded && props.extendedMenu && (
 					<ExtendedDrawingMenu

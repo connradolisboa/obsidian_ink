@@ -83,6 +83,16 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 	const cameraLimitsRef = useRef<WritingCameraLimits>();
 	const [preventTransitions, setPreventTransitions] = React.useState<boolean>(true);
 
+	const initialStylusOnly = props.plugin.settings.stylusOnlyInput || isEreader();
+	const stylusOnlyRef = useRef<boolean>(initialStylusOnly);
+	const [stylusOnly, setStylusOnly] = React.useState<boolean>(initialStylusOnly);
+
+	const toggleStylusOnly = () => {
+		const next = !stylusOnlyRef.current;
+		stylusOnlyRef.current = next;
+		setStylusOnly(next);
+	};
+
 	// On mount
 	React.useEffect( ()=> {
 		verbose('EDITOR mounted');
@@ -112,9 +122,9 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 		focusChildTldrawEditor(editorWrapperRefEl.current);
 
 		const ereader = isEreader();
-		const stylusOnly = props.plugin.settings.stylusOnlyInput || ereader;
 		const fingerSwipeScroll = props.plugin.settings.fingerSwipeScroll;
-		preventTldrawCanvasesCausingObsidianGestures(editor, { stylusOnly, fingerSwipeScroll });
+		// Pass a getter so the event listeners can check the live value when toggled at runtime
+		preventTldrawCanvasesCausingObsidianGestures(editor, { stylusOnly: () => stylusOnlyRef.current, fingerSwipeScroll });
 
 		setEreaderStreamline(props.plugin.settings.writingStreamline);
 
@@ -392,7 +402,7 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 		e.stopPropagation();
 		const editor = tlEditorRef.current;
 		if (!editor) return;
-		addWritingLines(editor, 2);
+		addWritingLines(editor, props.plugin.settings.writingManualLineAddCount);
 		resizeContainerIfEmbed(editor);
 	};
 
@@ -431,6 +441,8 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 				<WritingMenu
 					getTlEditor = {getTlEditor}
 					onStoreChange = {(tlEditor: Editor) => queueOrRunStorePostProcesses(tlEditor)}
+					stylusOnly = {stylusOnly}
+					onToggleStylusOnly = {toggleStylusOnly}
 				/>
 				{props.embedded && props.extendedMenu && (
 					<ExtendedWritingMenu
@@ -468,7 +480,7 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 					<button
 						className="ink_add-lines-button"
 						onPointerDown={handleAddLines}
-						aria-label="Add 5 lines"
+						aria-label={`Add ${props.plugin.settings.writingManualLineAddCount} lines`}
 					>
 						<svg xmlns="http://www.w3.org/2000/svg" height={24} viewBox="0 -960 960 960" width={24}>
 							<path d="M440-440H200q-17 0-28.5-11.5T160-480q0-17 11.5-28.5T200-520h240v-240q0-17 11.5-28.5T480-800q17 0 28.5 11.5T520-760v240h240q17 0 28.5 11.5T800-480q0 17-11.5 28.5T760-440H520v240q0 17-11.5 28.5T480-160q-17 0-28.5-11.5T440-200v-240Z" />

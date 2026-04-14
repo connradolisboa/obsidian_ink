@@ -539,12 +539,34 @@ function insertWritingSettings(containerEl: HTMLElement, plugin: InkPlugin, refr
 	new Setting(sectionEl)
 		.setClass('ddc_ink_setting')
 		.setName('Manual line add')
-		.setDesc('Disable automatic line adding when writing reaches the bottom. Instead, a + button is shown to manually add 5 lines. Useful for e-ink devices where automatic resizing causes writing distortion.')
+		.setDesc('Disable automatic line adding when writing reaches the bottom. Instead, a + button is shown to manually add lines. Useful for e-ink devices where automatic resizing causes writing distortion.')
 		.addToggle((toggle) => {
 			toggle.setValue(plugin.settings.writingManualLineAdd);
 			toggle.onChange(async (value: boolean) => {
 				plugin.settings.writingManualLineAdd = value;
 				await plugin.saveSettings();
+			});
+		});
+
+	new Setting(sectionEl)
+		.setClass('ddc_ink_setting')
+		.setName('Lines per manual add')
+		.setDesc('Number of lines added each time the + button is clicked in manual line add mode.')
+		.addText((textItem) => {
+			textItem.setValue(plugin.settings.writingManualLineAddCount.toString());
+			textItem.setPlaceholder(DEFAULT_SETTINGS.writingManualLineAddCount.toString());
+			const saveLineAddCount = (value: string) => {
+				const num = parseInt(value);
+				if (!isNaN(num) && num > 0) {
+					plugin.settings.writingManualLineAddCount = num;
+					plugin.saveSettings();
+				} else {
+					textItem.setValue(plugin.settings.writingManualLineAddCount.toString());
+				}
+			};
+			textItem.inputEl.addEventListener('blur', (ev: FocusEvent) => saveLineAddCount(textItem.getValue()));
+			textItem.inputEl.addEventListener('keypress', (ev: KeyboardEvent) => {
+				if (ev.key === 'Enter') saveLineAddCount(textItem.getValue());
 			});
 		});
 

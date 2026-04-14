@@ -23,6 +23,8 @@ interface DrawingMenuProps {
     getTlEditor: () => Editor | undefined,
     onStoreChange: (elEditor: Editor) => void,
     embedded?: boolean,
+    stylusOnly: boolean,
+    onToggleStylusOnly: () => void,
 }
 
 export const DrawingMenu = React.forwardRef<HTMLDivElement, DrawingMenuProps>((props, ref) => {
@@ -136,6 +138,13 @@ export const DrawingMenu = React.forwardRef<HTMLDivElement, DrawingMenuProps>((p
                 <button
                     onPointerDown={activateHandTool}
                     disabled={curTool === tool.hand}
+                >
+                    <HandIcon/>
+                </button>
+                <button
+                    onPointerDown={props.onToggleStylusOnly}
+                    disabled={!props.stylusOnly}
+                    aria-label={props.stylusOnly ? "Stylus only — tap to allow finger drawing" : "Finger drawing enabled — tap for stylus only"}
                 >
                     <HandIcon/>
                 </button>
