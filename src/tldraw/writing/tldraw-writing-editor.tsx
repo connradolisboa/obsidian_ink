@@ -1,7 +1,7 @@
 import './tldraw-writing-editor.scss';
 import { Box, DefaultDashStyle, DrawShapeUtil, Editor, HistoryEntry, StoreSnapshot, TLStoreSnapshot, TLRecord, TLShapeId, TLStore, TLUiOverrides, TLUnknownShape, Tldraw, getSnapshot, TLSerializedStore, TldrawOptions, TldrawEditor, defaultTools, defaultShapeTools, defaultShapeUtils, defaultBindingUtils, TldrawScribble, TldrawShapeIndicators, TldrawSelectionForeground, TldrawSelectionBackground, TldrawHandles, TLEditorSnapshot } from "@tldraw/tldraw";
 import { useRef } from "react";
-import { Activity, WritingCameraLimits, adaptTldrawToObsidianThemeMode, deleteObsoleteWritingTemplateShapes, focusChildTldrawEditor, getActivityType, getWritingCameraYBounds, getWritingContainerBounds, getWritingSvg, hideWritingContainer, hideWritingLines, hideWritingTemplate, initWritingCamera, initWritingCameraLimits, lockShape, prepareWritingSnapshot, preventTldrawCanvasesCausingObsidianGestures, resizeWritingTemplateInvitingly, addWritingLines, restrictWritingCamera, silentlyChangeStore, unhideWritingContainer, unhideWritingLines, unhideWritingTemplate, unlockShape, updateWritingStoreIfNeeded, useStash } from "../../utils/tldraw-helpers";
+import { Activity, WritingCameraLimits, adaptTldrawToObsidianThemeMode, deleteObsoleteWritingTemplateShapes, focusChildTldrawEditor, getActivityType, getWritingCameraYBounds, getWritingContainerBounds, getWritingSvg, hideWritingContainer, hideWritingLines, hideWritingTemplate, initWritingCamera, initWritingCameraLimits, lockShape, prepareWritingSnapshot, preventTldrawCanvasesCausingObsidianGestures, resizeWritingTemplateInvitingly, addWritingLines, removeWritingLine, restrictWritingCamera, silentlyChangeStore, unhideWritingContainer, unhideWritingLines, unhideWritingTemplate, unlockShape, updateWritingStoreIfNeeded, useStash } from "../../utils/tldraw-helpers";
 import { WritingContainer, WritingContainerUtil } from "../writing-shapes/writing-container"
 import { WritingMenu } from "../writing-menu/writing-menu";
 import InkPlugin from "../../main";
@@ -406,6 +406,15 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 		resizeContainerIfEmbed(editor);
 	};
 
+	const handleRemoveLine = (e: React.PointerEvent) => {
+		e.preventDefault();
+		e.stopPropagation();
+		const editor = tlEditorRef.current;
+		if (!editor) return;
+		removeWritingLine(editor);
+		resizeContainerIfEmbed(editor);
+	};
+
 	//////////////
 
 	return <>
@@ -477,15 +486,26 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 					onStoreChange = {(tlEditor: Editor) => queueOrRunStorePostProcesses(tlEditor)}
 				/>
 				{props.plugin.settings.writingManualLineAdd && (
-					<button
-						className="ink_add-lines-button"
-						onPointerDown={handleAddLines}
-						aria-label={`Add ${props.plugin.settings.writingManualLineAddCount} lines`}
-					>
-						<svg xmlns="http://www.w3.org/2000/svg" height={24} viewBox="0 -960 960 960" width={24}>
-							<path d="M440-440H200q-17 0-28.5-11.5T160-480q0-17 11.5-28.5T200-520h240v-240q0-17 11.5-28.5T480-800q17 0 28.5 11.5T520-760v240h240q17 0 28.5 11.5T800-480q0 17-11.5 28.5T760-440H520v240q0 17-11.5 28.5T480-160q-17 0-28.5-11.5T440-200v-240Z" />
-						</svg>
-					</button>
+					<>
+						<button
+							className="ink_add-lines-button"
+							onPointerDown={handleAddLines}
+							aria-label={`Add ${props.plugin.settings.writingManualLineAddCount} lines`}
+						>
+							<svg xmlns="http://www.w3.org/2000/svg" height={24} viewBox="0 -960 960 960" width={24}>
+								<path d="M440-440H200q-17 0-28.5-11.5T160-480q0-17 11.5-28.5T200-520h240v-240q0-17 11.5-28.5T480-800q17 0 28.5 11.5T520-760v240h240q17 0 28.5 11.5T800-480q0 17-11.5 28.5T760-440H520v240q0 17-11.5 28.5T480-160q-17 0-28.5-11.5T440-200v-240Z" />
+							</svg>
+						</button>
+						<button
+							className="ink_remove-line-button"
+							onPointerDown={handleRemoveLine}
+							aria-label="Remove one line"
+						>
+							<svg xmlns="http://www.w3.org/2000/svg" height={16} viewBox="0 -960 960 960" width={16}>
+								<path d="M200-440q-17 0-28.5-11.5T160-480q0-17 11.5-28.5T200-520h560q17 0 28.5 11.5T800-480q0 17-11.5 28.5T760-440H200Z" />
+							</svg>
+						</button>
+					</>
 				)}
 				{props.embedded && props.plugin.settings.showScrollButtons && <ScrollButtons />}
 				{!props.embedded && props.plugin.settings.showScrollButtons && <ScrollButtons getTlEditor={getTlEditor} />}

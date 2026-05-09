@@ -931,6 +931,39 @@ export const resizeWritingTemplateInvitingly = (editor: Editor, pageIndex?: numb
 }
 
 /***
+ * Remove one line from the writing template, clamped to WRITING_MIN_PAGE_HEIGHT.
+ */
+export const removeWritingLine = (editor: Editor, pageIndex?: number) => {
+	verbose('removeWritingLine');
+
+	const writingLinesShape = getWritingLinesShape(editor, pageIndex);
+	const writingContainerShape = getWritingContainerShape(editor, pageIndex);
+
+	if(!writingLinesShape) return;
+	if(!writingContainerShape) return;
+
+	const currentHeight = writingContainerShape.props.h;
+	const newHeight = Math.max(currentHeight - WRITING_LINE_HEIGHT, WRITING_MIN_PAGE_HEIGHT);
+
+	silentlyChangeStore( editor, () => {
+		unlockShape(editor, writingContainerShape);
+		unlockShape(editor, writingLinesShape);
+		editor.updateShape({
+			id: writingContainerShape.id,
+			type: writingContainerShape.type,
+			props: { h: newHeight }
+		})
+		editor.updateShape({
+			id: writingLinesShape.id,
+			type: writingLinesShape.type,
+			props: { h: newHeight }
+		})
+		lockShape(editor, writingContainerShape);
+		lockShape(editor, writingLinesShape);
+	})
+}
+
+/***
  * Add a specified number of extra lines to the writing template.
  */
 export const addWritingLines = (editor: Editor, lineCount: number = 5, pageIndex?: number) => {
