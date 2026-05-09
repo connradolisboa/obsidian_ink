@@ -1,12 +1,12 @@
 import './tldraw-writing-editor.scss';
-import { Box, DefaultDashStyle, DrawShapeUtil, Editor, HistoryEntry, StoreSnapshot, TLStoreSnapshot, TLRecord, TLShapeId, TLStore, TLUiOverrides, TLUnknownShape, Tldraw, getSnapshot, TLSerializedStore, TldrawOptions, TldrawEditor, defaultTools, defaultShapeTools, defaultShapeUtils, defaultBindingUtils, TldrawScribble, TldrawShapeIndicators, TldrawSelectionForeground, TldrawSelectionBackground, TldrawHandles, TLEditorSnapshot } from "@tldraw/tldraw";
+import { Box, DefaultDashStyle, DrawShapeUtil, Editor, HistoryEntry, StoreSnapshot, TLDrawShape, TLStoreSnapshot, TLRecord, TLShapeId, TLStore, TLUiOverrides, TLUnknownShape, Tldraw, getSnapshot, TLSerializedStore, TldrawOptions, TldrawEditor, defaultTools, defaultShapeTools, defaultShapeUtils, defaultBindingUtils, TldrawScribble, TldrawShapeIndicators, TldrawSelectionForeground, TldrawSelectionBackground, TldrawHandles, TLEditorSnapshot } from "@tldraw/tldraw";
 import { useRef } from "react";
-import { Activity, WritingCameraLimits, adaptTldrawToObsidianThemeMode, deleteObsoleteWritingTemplateShapes, focusChildTldrawEditor, getActivityType, getWritingCameraYBounds, getWritingContainerBounds, getWritingSvg, hideWritingContainer, hideWritingLines, hideWritingTemplate, initWritingCamera, initWritingCameraLimits, lockShape, prepareWritingSnapshot, preventTldrawCanvasesCausingObsidianGestures, resizeWritingTemplateInvitingly, addWritingLines, removeWritingLine, restrictWritingCamera, silentlyChangeStore, unhideWritingContainer, unhideWritingLines, unhideWritingTemplate, unlockShape, updateWritingStoreIfNeeded, useStash } from "../../utils/tldraw-helpers";
+import { Activity, WritingCameraLimits, adaptTldrawToObsidianThemeMode, deleteObsoleteWritingTemplateShapes, focusChildTldrawEditor, getActivityType, getWritingCameraYBounds, getWritingContainerBounds, getWritingContainerShape, getWritingSvg, hideWritingContainer, hideWritingLines, hideWritingTemplate, initWritingCamera, initWritingCameraLimits, lockShape, prepareWritingSnapshot, preventTldrawCanvasesCausingObsidianGestures, resizeWritingTemplateInvitingly, addWritingLines, removeWritingLine, restrictWritingCamera, silentlyChangeStore, unhideWritingContainer, unhideWritingLines, unhideWritingTemplate, unlockShape, updateWritingStoreIfNeeded, useStash } from "../../utils/tldraw-helpers";
 import { WritingContainer, WritingContainerUtil } from "../writing-shapes/writing-container"
 import { WritingMenu } from "../writing-menu/writing-menu";
 import InkPlugin from "../../main";
 import * as React from "react";
-import { MENUBAR_HEIGHT_PX, WRITE_LONG_DELAY_MS, WRITE_SHORT_DELAY_MS, WRITING_LINE_HEIGHT, WRITING_MIN_PAGE_HEIGHT, WRITING_PAGE_WIDTH } from 'src/constants';
+import { MENUBAR_HEIGHT_PX, WRITE_LONG_DELAY_MS, WRITE_LONG_DELAY_MS_EREADER, WRITE_SHORT_DELAY_MS, WRITING_LINE_HEIGHT, WRITING_MIN_PAGE_HEIGHT, WRITING_PAGE_WIDTH } from 'src/constants';
 import { InkFileData, buildWritingFileData } from 'src/utils/page-file';
 import { TFile } from 'obsidian';
 import { PrimaryMenuBar } from '../primary-menu-bar/primary-menu-bar';
@@ -79,9 +79,12 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 	const longDelayPostProcessTimeoutRef = useRef<NodeJS.Timeout>();
 	const tlEditorRef = useRef<Editor>();
 	const editorWrapperRefEl = useRef<HTMLDivElement>(null);
-	const { stashStaleContent, unstashStaleContent } = useStash(props.plugin);
+	const { stashStaleContent, unstashStaleContent, getStashedShapes } = useStash(props.plugin);
 	const cameraLimitsRef = useRef<WritingCameraLimits>();
 	const [preventTransitions, setPreventTransitions] = React.useState<boolean>(true);
+	// Tracks the lowest page-y reached by any draw shape's points. Used to skip
+	// resizeWritingTemplateInvitingly when the existing container still has room.
+	const lastContentMaxYRef = useRef<number>(0);
 
 	const initialStylusOnly = props.plugin.settings.stylusOnlyInput || isEreader();
 	const stylusOnlyRef = useRef<boolean>(initialStylusOnly);
@@ -143,6 +146,10 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 
 		updateWritingStoreIfNeeded(editor);
 
+		// Prime the stash once after load so the live store starts under the limit on
+		// large files. With Fix 5 the stash no longer runs on DrawingStarted.
+		stashStaleContent(editor);
+
 		// tldraw content setup
 		adaptTldrawToObsidianThemeMode(editor);
 		resizeWritingTemplateInvitingly(editor);
@@ -192,21 +199,29 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 
 				case Activity.DrawingStarted:
 					resetInputPostProcessTimers();
-					stashStaleContent(editor);
+					// Stash deferred to DrawingCompleted (Fix 5) — keeps the stylus hot path light.
 					break;
-					
+
 				case Activity.DrawingContinued:
 					resetInputPostProcessTimers();
 					break;
-							
+
 				case Activity.DrawingCompleted:
+					updateContentMaxYFromEntry(entry);
 					queueOrRunStorePostProcesses(editor);
+					// Stash old shapes off the hot path so the next pen-down isn't blocked by store mutations.
+					const idle = (window as any).requestIdleCallback as undefined | ((cb: () => void) => number);
+					if (idle) {
+						idle(() => stashStaleContent(editor));
+					} else {
+						setTimeout(() => stashStaleContent(editor), 0);
+					}
 					break;
-					
+
 				case Activity.DrawingErased:
 					queueOrRunStorePostProcesses(editor);
 					break;
-					
+
 				default:
 					// Catch anything else not specifically mentioned (ie. draw shape, etc.)
 					// queueOrRunStorePostProcesses(editor);
@@ -231,7 +246,7 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 			e.preventDefault();
 			const scrollContainer = editorWrapperRefEl.current?.closest('.cm-scroller') as HTMLElement;
 			if (scrollContainer) {
-				scrollContainer.scrollBy({ top: delta, behavior: 'smooth' });
+				scrollContainer.scrollBy({ top: delta, behavior: isEreader() ? 'auto' : 'smooth' });
 				return;
 			}
 			const cam = editor.getCamera();
@@ -255,7 +270,7 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 			props.saveControlsReference({
 				// save: () => completeSave(editor),
 				saveAndHalt: async (): Promise<void> => {
-					await completeSave(editor);
+					await completeSave(editor, /* forceSvg */ true);
 					unmountActions();	// Clean up immediately so nothing else occurs between this completeSave and a future unmount
 				},
 				resize: () => {
@@ -300,11 +315,42 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 		longDelayInputPostProcess(editor);
 	}
 
+	// Walk an entry's added/updated draw shapes and bump lastContentMaxYRef
+	// to the lowest page-y reached. Cheap — no editor lookups. Used to gate
+	// resizeWritingTemplateInvitingly so it only runs when content actually grew.
+	const updateContentMaxYFromEntry = (entry: HistoryEntry<TLRecord>) => {
+		const scan = (record: TLRecord) => {
+			if (record.typeName !== 'shape' || record.type !== 'draw') return;
+			const shape = record as TLDrawShape;
+			for (const seg of shape.props.segments) {
+				for (const p of seg.points) {
+					const pageY = shape.y + p.y;
+					if (pageY > lastContentMaxYRef.current) {
+						lastContentMaxYRef.current = pageY;
+					}
+				}
+			}
+		};
+		Object.values(entry.changes.added).forEach(scan);
+		Object.values(entry.changes.updated).forEach(([, after]) => scan(after));
+	};
+
 	// Use this to run optimisations that that are quick and need to occur immediately on lifting the stylus
 	const instantInputPostProcess = (editor: Editor) => { //, entry?: HistoryEntry<TLRecord>) => {
 		if(!props.plugin.settings.writingManualLineAdd) {
-			resizeWritingTemplateInvitingly(editor);
-			resizeContainerIfEmbed(editor);
+			// Fix 6 — only resize when latest content reaches within ~1 line of the
+			// container bottom. Skips ~10 store mutations per stroke when the user
+			// is writing in a roomy container.
+			const containerShape = getWritingContainerShape(editor);
+			const containerBottom = containerShape
+				? containerShape.y + containerShape.props.h
+				: 0;
+			const needsResize = !containerShape
+				|| lastContentMaxYRef.current + WRITING_LINE_HEIGHT > containerBottom;
+			if (needsResize) {
+				resizeWritingTemplateInvitingly(editor);
+				resizeContainerIfEmbed(editor);
+			}
 		}
 		// entry && simplifyLines(editor, entry);
 	};
@@ -325,12 +371,12 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 	// Use this to run optimisations after a slight delay
 	const longDelayInputPostProcess = (editor: Editor) => {
 		resetLongPostProcessTimer();
-		
+
 		longDelayPostProcessTimeoutRef.current = setTimeout(
 			() => {
 				completeSave(editor);
 			},
-			WRITE_LONG_DELAY_MS
+			isEreader() ? WRITE_LONG_DELAY_MS_EREADER : WRITE_LONG_DELAY_MS
 		)
 
 	};
@@ -346,11 +392,32 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 		resetLongPostProcessTimer();
 	}
 
+	// Build a snapshot that includes both the live store and any stashed shapes,
+	// without mutating the live editor. Replaces the previous unstash → snapshot →
+	// re-stash sequence (which fired three bulk store mutations and forced React
+	// to re-render every old stroke twice — a major mid-write hitch).
+	const buildMergedSnapshot = (editor: Editor): TLEditorSnapshot => {
+		const liveSnapshot = getSnapshot(editor.store);
+		const stashed = getStashedShapes();
+		if (stashed.length === 0) return liveSnapshot;
+
+		const stashedRecords = Object.fromEntries(
+			stashed.map(s => [s.id, s as unknown as TLRecord])
+		);
+		const mergedStore = {
+			...stashedRecords,
+			...liveSnapshot.document.store, // live wins on key collision
+		} as TLSerializedStore;
+
+		return {
+			...liveSnapshot,
+			document: { ...liveSnapshot.document, store: mergedStore },
+		};
+	};
+
 	const incrementalSave = async (editor: Editor) => {
 		verbose('incrementalSave');
-		unstashStaleContent(editor);
-		const tlEditorSnapshot = getSnapshot(editor.store);
-		stashStaleContent(editor);
+		const tlEditorSnapshot = buildMergedSnapshot(editor);
 
 		const pageData = buildWritingFileData({
 			tlEditorSnapshot: tlEditorSnapshot,
@@ -359,8 +426,23 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 		props.save(pageData);
 	}
 
-	const completeSave = async (editor: Editor): Promise<void> => {
+	const completeSave = async (editor: Editor, forceSvg: boolean = false): Promise<void> => {
 		verbose('completeSave');
+
+		// On e-readers during active writing, skip SVG preview generation — it's the
+		// single most expensive thing the editor does and the preview is only consumed
+		// when the file is rendered as an embed (never while the user is writing).
+		// saveAndHalt passes forceSvg=true so the closing snapshot still gets a preview.
+		if (isEreader() && !forceSvg) {
+			const tlEditorSnapshot = buildMergedSnapshot(editor);
+			const pageData = buildWritingFileData({
+				tlEditorSnapshot,
+				previewIsOutdated: true,
+			});
+			props.save(pageData);
+			return;
+		}
+
 		let previewUri;
 
 		unstashStaleContent(editor);
@@ -369,7 +451,7 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 		const svgObj = await getWritingSvg(editor);
 
 		stashStaleContent(editor);
-		
+
 		if (svgObj) {
 			previewUri = svgObj.svg;//await svgToPngDataUri(svgObj)
 			// if(previewUri) addDataURIImage(previewUri)	// NOTE: Option for testing

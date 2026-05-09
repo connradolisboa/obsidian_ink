@@ -21,6 +21,11 @@ export const WRITE_SHORT_DELAY_MS = 500;
 export const WRITE_LONG_DELAY_MS = 2000;
 export const WRITE_STROKE_LIMIT = 200;
 
+// E-reader (Boox/Onyx) tighter limits — fewer live shapes, longer SVG-export delay
+// to keep the stylus hot path light and avoid mid-write SVG generation hitches.
+export const WRITE_STROKE_LIMIT_EREADER = 75;
+export const WRITE_LONG_DELAY_MS_EREADER = 4000;
+
 export const DRAW_SHORT_DELAY_MS = 500;
 export const DRAW_LONG_DELAY_MS = 2000;
 export const DRAW_STROKE_LIMIT = 200;

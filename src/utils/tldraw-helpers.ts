@@ -1,5 +1,5 @@
 import { Editor, HistoryEntry, TLStoreSnapshot, TLRecord, TLShape, TLShapeId, TLUnknownShape, setUserPreferences, Box, TLEditorSnapshot } from "@tldraw/tldraw";
-import { MENUBAR_HEIGHT_PX, WRITE_STROKE_LIMIT, WRITING_LINE_HEIGHT, WRITING_MIN_PAGE_HEIGHT, WRITING_PAGE_WIDTH } from "src/constants";
+import { MENUBAR_HEIGHT_PX, WRITE_STROKE_LIMIT, WRITE_STROKE_LIMIT_EREADER, WRITING_LINE_HEIGHT, WRITING_MIN_PAGE_HEIGHT, WRITING_PAGE_WIDTH } from "src/constants";
 import { useRef } from 'react';
 import InkPlugin from "src/main";
 import { WritingContainer } from "src/tldraw/writing-shapes/writing-container";
@@ -7,6 +7,7 @@ import { WritingLines } from "src/tldraw/writing-shapes/writing-lines";
 import { showStrokeLimitTips_maybe } from "src/notices/stroke-limit-notice";
 import { Notice } from "obsidian";
 import { debug, warn, info, error, http, verbose } from "./log-to-console";
+import { isEreader } from "./isEreader";
 
 //////////
 //////////
@@ -466,11 +467,16 @@ export const useStash = (plugin: InkPlugin) => {
 	const stashStaleContent = (editor: Editor) => {
 		const completeShapes = getCompleteShapes(editor);
 
+		// On e-readers, cap the live-shape limit lower so fewer <path> elements have to repaint.
+		const effectiveLimit = isEreader()
+			? Math.min(plugin.settings.writingStrokeLimit, WRITE_STROKE_LIMIT_EREADER)
+			: plugin.settings.writingStrokeLimit;
+
 		const staleShapeIds: TLShapeId[] = [];
 		const staleShapes: TLShape[] = [];
 
 		// TODO: Order shapes by vertical position
-		for (let i = 0; i <= completeShapes.length - plugin.settings.writingStrokeLimit; i++) {
+		for (let i = 0; i <= completeShapes.length - effectiveLimit; i++) {
 			const record = completeShapes[i];
 			if (record.type !== 'draw') return;
 
@@ -499,7 +505,10 @@ export const useStash = (plugin: InkPlugin) => {
 		stash.current.length = 0;
 	};
 
-	return { stashStaleContent, unstashStaleContent };
+	// Read-only accessor so callers can build merged snapshots without mutating the live store.
+	const getStashedShapes = (): TLShape[] => stash.current;
+
+	return { stashStaleContent, unstashStaleContent, getStashedShapes };
 };
 
 export const hideWritingTemplate = (editor: Editor) => {
