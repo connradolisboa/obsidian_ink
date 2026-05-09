@@ -75,7 +75,7 @@ export class WritingLinesUtil extends ShapeUtil<WritingLines> {
 
 	createSvg(shape: WritingLines): React.JSX.Element {
 		const numberOfLines = Math.floor(shape.props.h / WRITING_LINE_HEIGHT);
-		const margin = 0.05 * shape.props.w;
+		const margin = 0;
 		this.isAspectRatioLocked(shape);
 
 		const lines = Array.from({ length: numberOfLines }, (_, index) => (
