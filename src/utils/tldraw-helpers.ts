@@ -300,6 +300,23 @@ export function initWritingCamera(editor: Editor, topMarginPx: number = 0) {
 	})
 }
 
+// Reset zoom to fit-to-width and recenter horizontally, preserving the user's
+// current vertical scroll position so they don't lose their place.
+export function fitWritingCameraToWidth(editor: Editor) {
+	const canvasWidth = editor.getContainer().innerWidth;
+	const newZoom = canvasWidth / WRITING_PAGE_WIDTH;
+
+	const camera = editor.getCamera();
+	const oldZoom = camera.z || newZoom;
+	// camera.y is in page-space units; scale it so the page-y currently at the
+	// top of the viewport stays at the top after the zoom change.
+	const newY = camera.y * (newZoom / oldZoom);
+
+	silentlyChangeStore(editor, () => {
+		editor.setCamera({ x: 0, y: newY, z: newZoom });
+	});
+}
+
 export function initDrawingCamera(editor: Editor) {
 	const allShapesBounds = editor.getCurrentPageBounds();
 	if (!allShapesBounds) {

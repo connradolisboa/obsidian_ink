@@ -1,7 +1,7 @@
 import './tldraw-writing-editor.scss';
 import { Box, DefaultDashStyle, DrawShapeUtil, Editor, HistoryEntry, StoreSnapshot, TLDrawShape, TLStoreSnapshot, TLRecord, TLShapeId, TLStore, TLUiOverrides, TLUnknownShape, Tldraw, getSnapshot, TLSerializedStore, TldrawOptions, TldrawEditor, defaultTools, defaultShapeTools, defaultShapeUtils, defaultBindingUtils, TldrawScribble, TldrawShapeIndicators, TldrawSelectionForeground, TldrawSelectionBackground, TldrawHandles, TLEditorSnapshot } from "@tldraw/tldraw";
 import { useRef } from "react";
-import { Activity, WritingCameraLimits, adaptTldrawToObsidianThemeMode, deleteObsoleteWritingTemplateShapes, focusChildTldrawEditor, getActivityType, getWritingCameraYBounds, getWritingContainerBounds, getWritingContainerShape, getWritingSvg, hideWritingContainer, hideWritingLines, hideWritingTemplate, initWritingCamera, initWritingCameraLimits, lockShape, prepareWritingSnapshot, preventTldrawCanvasesCausingObsidianGestures, resizeWritingTemplateInvitingly, addWritingLines, removeWritingLine, restrictWritingCamera, silentlyChangeStore, unhideWritingContainer, unhideWritingLines, unhideWritingTemplate, unlockShape, updateWritingStoreIfNeeded, useStash } from "../../utils/tldraw-helpers";
+import { Activity, WritingCameraLimits, adaptTldrawToObsidianThemeMode, deleteObsoleteWritingTemplateShapes, fitWritingCameraToWidth, focusChildTldrawEditor, getActivityType, getWritingCameraYBounds, getWritingContainerBounds, getWritingContainerShape, getWritingSvg, hideWritingContainer, hideWritingLines, hideWritingTemplate, initWritingCamera, initWritingCameraLimits, lockShape, prepareWritingSnapshot, preventTldrawCanvasesCausingObsidianGestures, resizeWritingTemplateInvitingly, addWritingLines, removeWritingLine, restrictWritingCamera, silentlyChangeStore, unhideWritingContainer, unhideWritingLines, unhideWritingTemplate, unlockShape, updateWritingStoreIfNeeded, useStash } from "../../utils/tldraw-helpers";
 import { WritingContainer, WritingContainerUtil } from "../writing-shapes/writing-container"
 import { WritingMenu } from "../writing-menu/writing-menu";
 import InkPlugin from "../../main";
@@ -497,6 +497,17 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 		resizeContainerIfEmbed(editor);
 	};
 
+	const handleFitToWidth = (e: React.PointerEvent) => {
+		e.preventDefault();
+		e.stopPropagation();
+		const editor = tlEditorRef.current;
+		if (!editor) return;
+		fitWritingCameraToWidth(editor);
+		// Re-baseline the camera limits so restrictWritingCamera doesn't snap
+		// the new zoom back to a stale value (e.g. after a window resize).
+		cameraLimitsRef.current = initWritingCameraLimits(editor);
+	};
+
 	//////////////
 
 	return <>
@@ -588,6 +599,18 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 							</svg>
 						</button>
 					</>
+				)}
+				{!props.embedded && (
+					<button
+						className="ink_fit-width-button"
+						onPointerDown={handleFitToWidth}
+						aria-label="Fit page to width"
+					>
+						{/* Fit width — Material Symbols Rounded (fit_screen) */}
+						<svg xmlns="http://www.w3.org/2000/svg" height={24} viewBox="0 -960 960 960" width={24}>
+							<path d="M160-160q-33 0-56.5-23.5T80-240v-160q0-17 11.5-28.5T120-440q17 0 28.5 11.5T160-400v160h160q17 0 28.5 11.5T360-200q0 17-11.5 28.5T320-160H160Zm480 0q-17 0-28.5-11.5T600-200q0-17 11.5-28.5T640-240h160v-160q0-17 11.5-28.5T840-440q17 0 28.5 11.5T880-400v160q0 33-23.5 56.5T800-160H640ZM120-520q-17 0-28.5-11.5T80-560v-160q0-33 23.5-56.5T160-800h160q17 0 28.5 11.5T360-760q0 17-11.5 28.5T320-720H160v160q0 17-11.5 28.5T120-520Zm720 0q-17 0-28.5-11.5T800-560v-160H640q-17 0-28.5-11.5T600-760q0-17 11.5-28.5T640-800h160q33 0 56.5 23.5T880-720v160q0 17-11.5 28.5T840-520Z" />
+						</svg>
+					</button>
 				)}
 				{props.embedded && props.plugin.settings.showScrollButtons && <ScrollButtons />}
 				{!props.embedded && props.plugin.settings.showScrollButtons && <ScrollButtons getTlEditor={getTlEditor} />}
