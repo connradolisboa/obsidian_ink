@@ -5,7 +5,7 @@
     width="395"
     height="130"
     fill="none"
-    class="ddc_ink_drawing-placeholder"
+    class="inkc_drawing-placeholder"
 >
     <g>
         <rect rx="10" ry="10" x="1" y="1" width="393" height="128" style="fill: none; stroke-width: 1; stroke: rgb(255, 255, 255); stroke-opacity: 0.1;"/>

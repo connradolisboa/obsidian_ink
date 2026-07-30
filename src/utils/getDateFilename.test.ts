@@ -11,19 +11,33 @@ describe(`Get formatted date filename`, () => {
     test(`Morning`, () => {
         jest.setSystemTime(new Date('Jan 18 2024 09:05:59'));
         const result = getDateFilename();
-        expect(result).toEqual('2024.1.18 - 9.05am');
+        expect(result).toEqual('2024.01.18 - 09.05am');
     })
 
     test(`Midday`, () => {
         jest.setSystemTime(new Date('Jan 18 2024 12:00:00'));
         const result = getDateFilename();
-        expect(result).toEqual('2024.1.18 - 12.00pm');
+        expect(result).toEqual('2024.01.18 - 12.00pm');
     })
-    
+
     test(`Evening`, () => {
         jest.setSystemTime(new Date('Jan 18 2024 23:10:10'));
         const result = getDateFilename();
-        expect(result).toEqual('2024.1.18 - 23.10pm');
+        expect(result).toEqual('2024.01.18 - 11.10pm');
+    })
+
+    test(`Midnight`, () => {
+        jest.setSystemTime(new Date('Jan 18 2024 00:30:00'));
+        const result = getDateFilename();
+        expect(result).toEqual('2024.01.18 - 12.30am');
+    })
+
+    test(`Zero padding keeps names in chronological order`, () => {
+        jest.setSystemTime(new Date('Jan 18 2024 09:05:00'));
+        const january = getDateFilename();
+        jest.setSystemTime(new Date('Dec 18 2024 09:05:00'));
+        const december = getDateFilename();
+        expect(january < december).toBe(true);
     })
 
 });

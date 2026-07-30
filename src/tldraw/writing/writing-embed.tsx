@@ -22,6 +22,7 @@ import { verbose } from "src/utils/log-to-console";
 import { CollapseIcon } from "src/graphics/icons/collapse-icon";
 import { ExpandIcon } from "src/graphics/icons/expand-icon";
 import { FullscreenIcon } from "src/graphics/icons/fullscreen-icon";
+import { hasCoarsePointer } from "src/utils/device-classes";
 
 ///////
 ///////
@@ -112,18 +113,24 @@ export function WritingEmbed (props: {
 	const commonExtendedOptions = [
 		{
 			text: 'Copy writing',
+			icon: 'copy',
+			section: 'inkc-file',
 			action: async () => {
 				await rememberWritingFile(props.plugin, props.writingFileRef);
 			}
 		},
 		{
 			text: 'Open writing',
+			icon: 'maximize',
+			section: 'inkc-file',
 			action: async () => {
 				openInkFile(props.plugin, props.writingFileRef)
 			}
 		},
 		{
 			text: 'Remove embed',
+			icon: 'trash-2',
+			section: 'inkc-danger',
 			action: () => {
 				props.remove()
 			},
@@ -136,9 +143,9 @@ export function WritingEmbed (props: {
 		<div
 			ref = {embedContainerElRef}
 			className = {classNames([
-				'ddc_ink_embed',
-				'ddc_ink_writing-embed',
-				collapsed && 'ddc_ink_collapsed',
+				'inkc_embed',
+				'inkc_writing-embed',
+				collapsed && 'inkc_collapsed',
 			])}
 			style = {{
 				// Must be padding as margin creates codemirror calculation issues
@@ -147,11 +154,11 @@ export function WritingEmbed (props: {
 			}}
 		>
 			{collapsed && (
-				<div className="ddc_ink_collapsed-bar" onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+				<div className="inkc_collapsed-bar" onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
 					{isEditingTitle ? (
 						<input
 							ref={titleInputRef}
-							className="ddc_ink_collapsed-title-input"
+							className="inkc_collapsed-title-input"
 							defaultValue={title}
 							autoFocus
 							onBlur={(e) => handleTitleCommit(e.target.value)}
@@ -163,19 +170,25 @@ export function WritingEmbed (props: {
 						/>
 					) : (
 						<span
-							className="ddc_ink_collapsed-label"
+							className="inkc_collapsed-label"
 							onDoubleClick={(e) => {
 								e.stopPropagation();
 								setIsEditingTitle(true);
 							}}
-							title="Double-click to rename"
+							// A double-click is impractical with a stylus, so a single tap
+							// starts the rename on touch and e-ink devices.
+							onClick={(e) => {
+								e.stopPropagation();
+								if (hasCoarsePointer()) setIsEditingTitle(true);
+							}}
+							title={hasCoarsePointer() ? 'Tap to rename' : 'Double-click to rename'}
 						>
 							{title}
 						</span>
 					)}
-					<div className="ddc_ink_collapsed-bar-buttons">
+					<div className="inkc_collapsed-bar-buttons">
 						<button
-							className="ddc_ink_collapse-btn"
+							className="inkc_collapse-btn"
 							onPointerDown={(e) => {
 								e.stopPropagation();
 								openInkFile(
@@ -191,7 +204,7 @@ export function WritingEmbed (props: {
 							<FullscreenIcon />
 						</button>
 						<button
-							className="ddc_ink_collapse-btn"
+							className="inkc_collapse-btn"
 							onPointerDown={(e) => { e.stopPropagation(); handleCollapsedChange(false); }}
 							onMouseDown={(e) => e.stopPropagation()}
 							onClick={(e) => e.stopPropagation()}
@@ -206,7 +219,7 @@ export function WritingEmbed (props: {
 			{!collapsed && <>
 				{/* Include another container so that it's height isn't affected by the padding of the outer container */}
 				<div
-					className = 'ddc_ink_resize-container'
+					className = 'inkc_resize-container'
 					ref = {resizeContainerElRef}
 				>
 
@@ -257,7 +270,7 @@ export function WritingEmbed (props: {
 		setTimeout( () => {
 			// Applies after slight delay so it doesn't affect the first resize
 			if(!resizeContainerElRef.current) return;
-			resizeContainerElRef.current.classList.add('ddc_ink_smooth-transition');
+			resizeContainerElRef.current.classList.add('inkc_smooth-transition');
 		}, 100)
 	}
 

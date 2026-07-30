@@ -1,8 +1,8 @@
 
-.ddc_ink_overflow-button-and-menu {
+.inkc_overflow-button-and-menu {
     position: relative;
 
-    .ddc_ink_dropdown {
+    .inkc_dropdown {
         position: absolute;
         top: 100%;
         right: 0;
@@ -15,7 +15,7 @@
         border-radius: 10px;
         
         display: none;
-        &.ddc_ink_visible {
+        &.inkc_visible {
             display: block;
         }
 

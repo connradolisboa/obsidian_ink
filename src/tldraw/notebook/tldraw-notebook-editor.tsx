@@ -6,7 +6,7 @@ import { WritingContainer, WritingContainerUtil } from "../writing-shapes/writin
 import { WritingMenu } from "../writing-menu/writing-menu";
 import InkPlugin from "../../main";
 import * as React from "react";
-import { MENUBAR_HEIGHT_PX, WRITE_LONG_DELAY_MS, WRITE_SHORT_DELAY_MS, NOTEBOOK_LINE_HEIGHT, NOTEBOOK_PAGE_WIDTH } from 'src/constants';
+import { MENUBAR_HEIGHT_PX, WRITE_LONG_DELAY_MS, WRITE_LONG_DELAY_MS_EREADER, WRITE_SHORT_DELAY_MS, NOTEBOOK_LINE_HEIGHT, NOTEBOOK_PAGE_WIDTH } from 'src/constants';
 import { InkFileData, buildWritingFileData } from 'src/utils/page-file';
 import { TFile } from 'obsidian';
 import { PrimaryMenuBar } from '../primary-menu-bar/primary-menu-bar';
@@ -148,7 +148,7 @@ export function TldrawNotebookEditor(props: TldrawNotebookEditorProps) {
 		}
 
 		if (ereader && editorWrapperRefEl.current) {
-			editorWrapperRefEl.current.classList.add('ddc_ink_ereader-mode');
+			editorWrapperRefEl.current.classList.add('inkc_ereader-mode');
 		}
 
 		resizeContainerIfEmbed(tlEditorRef.current);
@@ -236,7 +236,7 @@ export function TldrawNotebookEditor(props: TldrawNotebookEditorProps) {
 		if(props.saveControlsReference) {
 			props.saveControlsReference({
 				saveAndHalt: async (): Promise<void> => {
-					await completeSave(editor);
+					await completeSave(editor, /* forceSvg */ true);
 					unmountActions();
 				},
 				resize: () => {
@@ -301,7 +301,7 @@ export function TldrawNotebookEditor(props: TldrawNotebookEditorProps) {
 			() => {
 				completeSave(editor);
 			},
-			WRITE_LONG_DELAY_MS
+			isEreader() ? WRITE_LONG_DELAY_MS_EREADER : WRITE_LONG_DELAY_MS
 		)
 	};
 
@@ -329,8 +329,24 @@ export function TldrawNotebookEditor(props: TldrawNotebookEditorProps) {
 		props.save(pageData);
 	}
 
-	const completeSave = async (editor: Editor): Promise<void> => {
+	const completeSave = async (editor: Editor, forceSvg: boolean = false): Promise<void> => {
 		verbose('notebook completeSave');
+
+		// On e-readers during active writing, skip preview generation. A notebook renders
+		// one SVG per page and page-switches between each, so it's the heaviest thing this
+		// editor does — and the previews are only read back when the file is shown as an
+		// embed, never while the user is writing. saveAndHalt passes forceSvg so the
+		// closing snapshot still gets its previews.
+		if (isEreader() && !forceSvg) {
+			unstashStaleContent(editor);
+			const snapshot = getSnapshot(editor.store);
+			stashStaleContent(editor);
+			props.save(buildWritingFileData({
+				tlEditorSnapshot: snapshot,
+				previewIsOutdated: true,
+			}));
+			return;
+		}
 
 		unstashStaleContent(editor);
 
@@ -378,7 +394,7 @@ export function TldrawNotebookEditor(props: TldrawNotebookEditorProps) {
 		<div
 			ref = {editorWrapperRefEl}
 			className = {classNames([
-				"ddc_ink_notebook-editor",
+				"inkc_notebook-editor",
 			])}
 			style={{
 				height: '100%',

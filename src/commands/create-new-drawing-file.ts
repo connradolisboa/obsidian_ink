@@ -8,8 +8,8 @@ import { TFile } from "obsidian";
 ////////
 ////////
 
-const createNewDrawingFile = async (plugin: InkPlugin, instigatingFile?: TFile | null) => {
-    const filepath = await getNewTimestampedDrawingFilepath(plugin, instigatingFile);
+const createNewDrawingFile = async (plugin: InkPlugin, instigatingFile?: TFile | null, basenameOverride?: string) => {
+    const filepath = await getNewTimestampedDrawingFilepath(plugin, instigatingFile, basenameOverride);
     const pageData = buildDrawingFileData({
         tlEditorSnapshot: defaultTLEditorDrawingSnapshot,
     });

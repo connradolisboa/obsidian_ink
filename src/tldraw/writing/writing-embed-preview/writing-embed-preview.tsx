@@ -59,9 +59,9 @@ const WritingEmbedPreview: React.FC<WritingEmbedPreviewProps> = (props) => {
         <div
             ref={containerElRef}
             className={classNames([
-                'ddc_ink_writing-embed-preview',
-                props.plugin.settings.writingLinesWhenLocked && 'ddc_ink_visible-lines',
-                props.plugin.settings.writingBackgroundWhenLocked && 'ddc_ink_visible-background',
+                'inkc_writing-embed-preview',
+                props.plugin.settings.writingLinesWhenLocked && 'inkc_visible-lines',
+                props.plugin.settings.writingBackgroundWhenLocked && 'inkc_visible-background',
             ])}
             style={{
                 position: 'absolute',
@@ -99,10 +99,10 @@ const WritingEmbedPreview: React.FC<WritingEmbedPreviewProps> = (props) => {
                 />
             </>)}
 
-            <div className="ddc_ink_preview-buttons">
+            <div className="inkc_preview-buttons">
                 {props.onFullscreenClick && (
                     <button
-                        className="ddc_ink_collapse-btn"
+                        className="inkc_collapse-btn"
                         onPointerDown={(e) => {
                             e.stopPropagation();
                             props.onFullscreenClick?.();
@@ -116,7 +116,7 @@ const WritingEmbedPreview: React.FC<WritingEmbedPreviewProps> = (props) => {
                 )}
                 {props.onCollapseClick && (
                     <button
-                        className="ddc_ink_collapse-btn"
+                        className="inkc_collapse-btn"
                         onPointerDown={(e) => {
                             e.stopPropagation();
                             props.onCollapseClick?.();

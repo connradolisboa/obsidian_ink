@@ -1,14 +1,14 @@
 
 
 // Enables placing elements outside of the embed
-.markdown-source-view.mod-cm6 .cm-content > .cm-preview-code-block.cm-embed-block.markdown-rendered[contenteditable=false]:has(.ddc_ink_drawing-embed),
-.markdown-source-view.mod-cm6 .cm-content > .cm-preview-code-block.cm-embed-block.markdown-rendered[contenteditable=false]:has(.ddc_ink_drawing-embed):hover {
+.markdown-source-view.mod-cm6 .cm-content > .cm-preview-code-block.cm-embed-block.markdown-rendered[contenteditable=false]:has(.inkc_drawing-embed),
+.markdown-source-view.mod-cm6 .cm-content > .cm-preview-code-block.cm-embed-block.markdown-rendered[contenteditable=false]:has(.inkc_drawing-embed):hover {
     contain: unset !important;
     overflow: visible;
 }
 
 
-.cm-preview-code-block.cm-embed-block.markdown-rendered:has(.ddc_ink_drawing-embed) {
+.cm-preview-code-block.cm-embed-block.markdown-rendered:has(.inkc_drawing-embed) {
     // Extend through page horizontal margin, but only when Readable Line Length is off.
     // When enabled (body.is-readable-line-width), the embed stays within the content column.
     body:not(.is-readable-line-width) & {
@@ -28,7 +28,7 @@
         display: none;
     }
 
-    .ddc_ink_drawing-editor {
+    .inkc_drawing-editor {
 
         .tl-container {
             // Allow tldraw right click menu to overflow container
@@ -79,8 +79,8 @@
 
 // Default: constrain drawing embeds within their parent. Uses both logical and
 // physical margin resets to handle themes that set margins via either property type.
-.cm-preview-code-block.cm-embed-block.markdown-rendered:has(.ddc_ink_drawing-embed),
-.cm-preview-code-block.cm-embed-block.markdown-rendered:has(.ddc_ink_drawing-embed):hover {
+.cm-preview-code-block.cm-embed-block.markdown-rendered:has(.inkc_drawing-embed),
+.cm-preview-code-block.cm-embed-block.markdown-rendered:has(.inkc_drawing-embed):hover {
     margin-inline-start: 0 !important;
     margin-inline-end: 0 !important;
     margin-left: 0 !important;
@@ -88,7 +88,7 @@
     max-width: 100% !important;
 }
 
-.ddc_ink_drawing-embed {
+.inkc_drawing-embed {
     box-sizing: content-box;
     transition-property: padding;
     transition-duration: 0.5s;
@@ -97,12 +97,12 @@
 
 
 .theme-dark {
-    .ddc_ink_drawing-embed-preview {
+    .inkc_drawing-embed-preview {
         // Only fill paths that are meant to be filled (not stroke-only paths)
         path:not([fill="none"]) { fill: rgb(242, 242, 242); }
         path[fill="none"] { stroke: rgb(242, 242, 242); }
 
-        .ddc_ink_drawing-placeholder {
+        .inkc_drawing-placeholder {
             path { stroke: rgb(242, 242, 242) !important; }
             rect, circle { stroke: rgb(242, 242, 242) !important; }
         }
@@ -111,12 +111,12 @@
 }
 
 .theme-light {
-    .ddc_ink_drawing-embed-preview {
+    .inkc_drawing-embed-preview {
         // Only fill paths that are meant to be filled (not stroke-only paths)
         path:not([fill="none"]) { fill: rgb(29, 29, 29); }
         path[fill="none"] { stroke: rgb(29, 29, 29); }
 
-        .ddc_ink_drawing-placeholder {
+        .inkc_drawing-placeholder {
             path { stroke: rgb(29, 29, 29) !important; }
             rect, circle { stroke: rgb(29, 29, 29) !important; }
         }

@@ -1,7 +1,7 @@
 // Notebook embed inherits common embed styles from writing-embed.scss
 // Only notebook-specific overrides go here
 
-.ddc_ink_preview-page-nav {
+.inkc_preview-page-nav {
     position: absolute;
     bottom: 4px;
     left: 50%;
@@ -50,6 +50,6 @@
     }
 }
 
-.ddc_ink_writing-embed-preview:hover .ddc_ink_preview-page-nav {
+.inkc_writing-embed-preview:hover .inkc_preview-page-nav {
     opacity: 1;
 }

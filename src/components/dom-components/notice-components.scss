@@ -1,5 +1,5 @@
 
-.notice:has(.ddc_ink_notice) {
+.notice:has(.inkc_notice) {
     // Make mobile notifications consistent with reliable contrast
     border-radius: var(--radius-m) !important;
     background-color: var(--background-primary-alt) !important;
@@ -10,10 +10,10 @@
     pointer-events: none;
 }
 
-.ddc_ink_notice {
+.inkc_notice {
     text-align: left !important;
     
-    p.ddc_ink_notice-label {
+    p.inkc_notice-label {
         color: var(--text-faint);
         font-size: var(--font-small);
         margin: 0;
@@ -57,7 +57,7 @@
         pointer-events: all;
     }
 
-    .ddc_ink_notice-cta-bar {
+    .inkc_notice-cta-bar {
         display: flex;
         flex-direction: row-reverse; // 
         justify-content: space-between;
@@ -66,7 +66,7 @@
             pointer-events: all;
             // margin-left: auto; // Right aligns when no siblings
 
-            &.ddc_ink_tertiary-btn {
+            &.inkc_tertiary-btn {
                 color: var(--text-faint);
                 background: none;
                 box-shadow: none;
@@ -86,7 +86,7 @@
                 }
             }
 
-            &.ddc_ink_primary-btn {
+            &.inkc_primary-btn {
                 color: var(--text-on-accent);
                 background-color: var(--interactive-accent);
                 

@@ -14,11 +14,11 @@ export class ToggleAccordionSetting {
 
 	constructor(containerEl: HTMLElement) {
 		this.containerEl = containerEl;
-		this.sectionEl = this.containerEl.createDiv('ddc_ink_toggle-accordion');
-		this.sectionHeaderEl = this.sectionEl.createDiv('ddc_ink_toggle-accordion-header');
-		this.sectionContentEl = this.sectionEl.createDiv('ddc_ink_toggle-accordion-content');
+		this.sectionEl = this.containerEl.createDiv('inkc_toggle-accordion');
+		this.sectionHeaderEl = this.sectionEl.createDiv('inkc_toggle-accordion-header');
+		this.sectionContentEl = this.sectionEl.createDiv('inkc_toggle-accordion-content');
 		this.toggleSetting = new Setting(this.sectionHeaderEl)
-			.setClass('ddc_ink_setting')
+			.setClass('inkc_setting')
 			.addToggle((toggle) => this.toggle = toggle);
 		return this;
 	}
@@ -36,9 +36,9 @@ export class ToggleAccordionSetting {
 	setExpanded(expanded: boolean): ToggleAccordionSetting {
 		this.toggle.setValue(expanded);
 		if(expanded) {
-			this.sectionEl.classList.add('ddc_ink_expanded');
+			this.sectionEl.classList.add('inkc_expanded');
 			} else {
-			this.sectionEl.classList.remove('ddc_ink_expanded');
+			this.sectionEl.classList.remove('inkc_expanded');
 		}
 		return this;
 	}

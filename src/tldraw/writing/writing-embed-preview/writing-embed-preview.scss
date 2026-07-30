@@ -4,7 +4,7 @@
 // Auto adapts to themes
 ////////////////////////
 
-.ddc_ink_writing-embed-preview {
+.inkc_writing-embed-preview {
     pointer-events: none;
 
     overflow: visible;
@@ -21,7 +21,7 @@
 
     
 
-    &.ddc_ink_visible-background {
+    &.inkc_visible-background {
         border: solid 1px var(--color-base-20);
         border-radius: 20px;
         background-color: var(--color-base-05);
@@ -33,7 +33,7 @@
         stroke-width: 2px;
     }
     
-    &:not(.ddc_ink_visible-lines) {
+    &:not(.inkc_visible-lines) {
         line { display: none; }
     }
 
@@ -48,7 +48,7 @@
 ////////////////////////
 
 .theme-dark {
-    .ddc_ink_writing-embed-preview {
+    .inkc_writing-embed-preview {
 
         // Pens — color filled-outline strokes (default renderer) and
         // centerline strokes (ereader renderer, which use fill="none" + stroke)
@@ -59,7 +59,7 @@
 }
 
 .theme-light {
-    .ddc_ink_writing-embed-preview {
+    .inkc_writing-embed-preview {
 
         // Pens
         path:not([fill="none"]) { fill: rgb(29, 29, 29); }

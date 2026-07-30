@@ -24,8 +24,13 @@ import { showVersionNotice } from './notices/version-notices';
 import { atom, useSetAtom } from 'jotai';
 import { debug } from './utils/log-to-console';
 import { updateInkEmbedLinksInVault } from './utils/embed';
+import { INK_FILE_EXTS } from './constants';
 import { drawDefaultSvgStr, writeDefaultSvgStr, writeExistingSvgStr, writePasteSvgStr } from './graphics/icons/command-icons';
 import { drawExistingSvgStr, drawPasteSvgStr } from './graphics/icons/command-icons';
+import { applyDeviceClasses } from './utils/device-classes';
+// Imported last so its cross-cutting rules land after every component stylesheet
+// in the bundled CSS, and win ties on equal specificity.
+import './styles/plugin-polish.scss';
 
 ////////
 ////////
@@ -35,6 +40,8 @@ export default class InkPlugin extends Plugin {
 
 	async onload() {
 		await this.loadSettings();
+
+		applyDeviceClasses(this);
 
 		// const setPlugin = useSetAtom(inkPluginAtom);
 		// setPlugin(this);
@@ -79,7 +86,7 @@ export default class InkPlugin extends Plugin {
 
 		this.registerEvent(this.app.vault.on('rename', async (file, oldPath) => {
 			if (!(file instanceof TFile)) return;
-			if (!['writing', 'drawing', 'notebook'].includes(file.extension)) return;
+			if (!INK_FILE_EXTS.includes(file.extension)) return;
 			await updateInkEmbedLinksInVault(this, file.path, oldPath);
 		}));
 

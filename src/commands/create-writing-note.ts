@@ -6,25 +6,28 @@ import { openInkFile } from "src/utils/open-file";
 import { getDateFilename } from "src/utils/getDateFilename";
 import { normalizePath } from "obsidian";
 import { getVersionedFilepath } from "src/utils/getVersionedFilepath";
+import { parseFilepath } from "src/utils/parseFilepath";
 
 /////////
 /////////
 
 const createWritingNote = async (plugin: InkPlugin) => {
-    const writingFileRef = await createNewWritingFile(plugin);
 
     if (plugin.settings.createCompanionNote) {
-        const embedStr = buildWritingEmbed(writingFileRef.path);
-        const noteFilename = getDateFilename() + '.md';
-        const notePath = normalizePath(noteFilename);
+        // The note is created first so the writing file can take its name.
+        const notePath = normalizePath(getDateFilename() + '.md');
         const versionedPath = await getVersionedFilepath(plugin, notePath);
-        const noteContent = embedStr.trimStart();
+        const noteBasename = parseFilepath(versionedPath).basename;
+
+        const writingFileRef = await createNewWritingFile(plugin, null, noteBasename);
+        const noteContent = buildWritingEmbed(writingFileRef.path).trimStart();
         const noteRef = await plugin.app.vault.create(versionedPath, noteContent);
 
         activateNextEmbed();
         const leaf = plugin.app.workspace.getLeaf();
         await leaf.openFile(noteRef);
     } else {
+        const writingFileRef = await createNewWritingFile(plugin);
         await openInkFile(plugin, writingFileRef);
     }
 }

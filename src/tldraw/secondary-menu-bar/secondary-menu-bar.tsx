@@ -32,7 +32,7 @@ export const SecondaryMenuBar = (props: SecondaryMenuBarProps) => {
             ref = {SecondaryMenuBarElRef}
             className = {classNames([
                 'ink_secondary-menu-bar',
-                menuActive && 'ddc_ink_active',
+                menuActive && 'inkc_active',
             ])}
         >
             {props.children}
@@ -57,13 +57,13 @@ export const SecondaryMenuBar = (props: SecondaryMenuBarProps) => {
     }
 
     // function initFocusHandlers() {
-    //     const parentEmbedEl = SecondaryMenuBarElRef.current?.closest('.ddc_ink_embed');
+    //     const parentEmbedEl = SecondaryMenuBarElRef.current?.closest('.inkc_embed');
     //     if(!parentEmbedEl) return;
     //     parentEmbedEl.addEventListener('focusin', handleFocusIn)
     //     parentEmbedEl.addEventListener('focusout', handleFocusOut)
     // }
     // function cleanUpFocusHandlers() {
-    //     const parentEmbedEl = SecondaryMenuBarElRef.current?.closest('.ddc_ink_embed');
+    //     const parentEmbedEl = SecondaryMenuBarElRef.current?.closest('.inkc_embed');
     //     if(!parentEmbedEl) return;
     //     parentEmbedEl.removeEventListener('focusin', handleFocusIn)
     //     parentEmbedEl.removeEventListener('focusout', handleFocusOut)

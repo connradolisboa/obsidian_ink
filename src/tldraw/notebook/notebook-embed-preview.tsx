@@ -72,9 +72,9 @@ const NotebookEmbedPreview: React.FC<NotebookEmbedPreviewProps> = (props) => {
         <div
             ref={containerElRef}
             className={classNames([
-                'ddc_ink_writing-embed-preview',
-                props.plugin.settings.notebookLinesWhenLocked && 'ddc_ink_visible-lines',
-                props.plugin.settings.notebookBackgroundWhenLocked && 'ddc_ink_visible-background',
+                'inkc_writing-embed-preview',
+                props.plugin.settings.notebookLinesWhenLocked && 'inkc_visible-lines',
+                props.plugin.settings.notebookBackgroundWhenLocked && 'inkc_visible-background',
             ])}
             style={{
                 position: 'absolute',
@@ -107,10 +107,10 @@ const NotebookEmbedPreview: React.FC<NotebookEmbedPreviewProps> = (props) => {
                 />
             </>)}
 
-            <div className="ddc_ink_preview-buttons">
+            <div className="inkc_preview-buttons">
                 {props.onFullscreenClick && (
                     <button
-                        className="ddc_ink_collapse-btn"
+                        className="inkc_collapse-btn"
                         onPointerDown={(e) => {
                             e.stopPropagation();
                             props.onFullscreenClick?.();
@@ -123,7 +123,7 @@ const NotebookEmbedPreview: React.FC<NotebookEmbedPreviewProps> = (props) => {
                 )}
                 {props.onCollapseClick && (
                     <button
-                        className="ddc_ink_collapse-btn"
+                        className="inkc_collapse-btn"
                         onPointerDown={(e) => {
                             e.stopPropagation();
                             props.onCollapseClick?.();
@@ -138,7 +138,7 @@ const NotebookEmbedPreview: React.FC<NotebookEmbedPreviewProps> = (props) => {
 
             {totalPages > 1 && (
                 <div
-                    className="ddc_ink_preview-page-nav"
+                    className="inkc_preview-page-nav"
                     onClick={(e) => e.stopPropagation()}
                 >
                     <button

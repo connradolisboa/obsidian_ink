@@ -1,4 +1,4 @@
-import { Menu, Notice } from "obsidian";
+import { Menu } from "obsidian";
 import "./overflow-menu.scss";
 import * as React from "react";
 import { OverflowIcon } from "src/graphics/icons/overflow-icon";
@@ -6,46 +6,48 @@ import { OverflowIcon } from "src/graphics/icons/overflow-icon";
 //////////
 //////////
 
-interface menuOption {
+export interface menuOption {
     text: string,
     action: Function,
+    /** Any Obsidian or Lucide icon id. */
+    icon?: string,
+    /** Menu items sharing a section are grouped together with a separator. */
+    section?: string,
 }
 
 export const OverflowMenu: React.FC<{
     menuOptions: menuOption[]
 }> = (props) => {
 
-    const menu = new Menu();
+    // Built on demand rather than on every render — the menu only exists for as
+    // long as it's open, and rebuilding it each render was throwing away a Menu
+    // instance per frame while the editor was active.
+    const openMenu = (e: React.MouseEvent) => {
+        const menu = new Menu();
 
-    props.menuOptions.forEach(menuOption => {
-        menu.addItem((item) =>
-            item
-                .setTitle(menuOption.text)
-                .onClick(() => {
-                    menuOption.action();
-                })
-        );
-    })
+        props.menuOptions.forEach(menuOption => {
+            menu.addItem((item) => {
+                item.setTitle(menuOption.text);
+                if (menuOption.icon) item.setIcon(menuOption.icon);
+                if (menuOption.section) item.setSection(menuOption.section);
+                item.onClick(() => menuOption.action());
+            });
+        });
+
+        menu.showAtMouseEvent(e.nativeEvent);
+    };
 
     return <>
-        <div className="ddc_ink_overflow-button-and-menu">
+        <div className="inkc_overflow-button-and-menu">
             <button
-                className="ddc_ink_btn-slim"
-                onClick={(e) => {
-                    menu.showAtMouseEvent(e.nativeEvent);
-                    // props.onOverflowClick();
-                }}
+                className="inkc_btn-slim"
+                onClick={openMenu}
+                aria-label="More options"
             >
                 <OverflowIcon />
             </button>
         </div>
     </>
-    {/* <button>...</button> */ }
-    {/* <button
-                onClick = {() => props.onCopyClick()}
-            >
-                Duplicate
-            </button>             */}
 
 };
 

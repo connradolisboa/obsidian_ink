@@ -193,7 +193,7 @@ export function applyCommonAncestorStyling(embedEl: HTMLElement) {
 	const parentEmbedBlockEl = embedEl.closest('.cm-embed-block') as HTMLElement;
 	if(!parentEmbedBlockEl) return;
 
-	parentEmbedBlockEl.classList.add('ddc_ink_embed-block');
+	parentEmbedBlockEl.classList.add('inkc_embed-block');
 
 	// When Readable Line Length is enabled, the scroller padding creates the reading column.
 	// Negating that padding would blow past the column to full viewport width, so skip it.

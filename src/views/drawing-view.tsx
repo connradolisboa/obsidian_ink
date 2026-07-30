@@ -13,7 +13,7 @@ import { rememberDrawingFile } from "src/utils/rememberDrawingFile";
 ////////
 ////////
 
-export const DRAWING_VIEW_TYPE = "ink_drawing-view";
+export const DRAWING_VIEW_TYPE = "inkc_drawing-view";
 
 function getExtendedOptions(plugin: InkPlugin, fileRef: TFile) {
     return [
@@ -109,14 +109,14 @@ export class DrawingView extends TextFileView {
     enableFocusMode(): void {
         if(this.plugin.settings.fullscreenFocusMode && !this.focusModeActive) {
             this.focusModeActive = true;
-            document.body.classList.add('ddc_ink_focus-mode');
+            document.body.classList.add('inkc_focus-mode');
         }
     }
 
     disableFocusMode(): void {
         if(this.focusModeActive) {
             this.focusModeActive = false;
-            document.body.classList.remove('ddc_ink_focus-mode');
+            document.body.classList.remove('inkc_focus-mode');
         }
     }
 

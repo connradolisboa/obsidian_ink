@@ -63,22 +63,22 @@ export class MySettingsTab extends PluginSettingTab {
 }
 
 function insertSetupGuide(plugin: InkPlugin, containerEl: HTMLElement) {
-	const sectionEl = containerEl.createDiv('ddc_ink_section ddc_ink_setup-guide-section');
+	const sectionEl = containerEl.createDiv('inkc_section inkc_setup-guide-section');
 	const accordionEl = sectionEl.createEl('details');
 	accordionEl.createEl('summary', { text: `Expand setup tips` });
 
 	new Setting(accordionEl)
-		.setClass('ddc_ink_setting')
+		.setClass('inkc_setting')
 		.setName('Slash Commands')
 		.setDesc(`For a more intuitive experience, turn on "Slash commands" in "Obsidian Settings" / "Core Plugins" or install and set up the community plugin "Slash Commander".`)
 
 	new Setting(accordionEl)
-		.setClass('ddc_ink_setting')
+		.setClass('inkc_setting')
 		.setName('Pen Scribble')
 		.setDesc(`If using an iPad, the Apple pencil "Scribble" setting can interfere with input in Ink sections. Disable it in iPadOS settings for a better experience.`)
 
 	new Setting(accordionEl)
-		.setClass('ddc_ink_setting')
+		.setClass('inkc_setting')
 		.setName('Obsidian Sync')
 		.setDesc(`If using "Obsidian Sync", turn on "Sync all other types" in the Obsidian sync settings.`)
 
@@ -91,7 +91,7 @@ function insertSetupGuide(plugin: InkPlugin, containerEl: HTMLElement) {
 }
 
 function insertMoreInfoLinks(containerEl: HTMLElement) {
-	const sectionEl = containerEl.createDiv('ddc_ink_section');
+	const sectionEl = containerEl.createDiv('inkc_section');
 	sectionEl.createEl('p', { text: `This is a personal fork, independent from the original Ink plugin's releases.` });
 	const list = sectionEl.createEl('ul');
 	list.createEl('li').createEl('a', {
@@ -111,7 +111,7 @@ function insertMoreInfoLinks(containerEl: HTMLElement) {
 function insertHighLevelSettings(containerEl: HTMLElement, plugin: InkPlugin, refresh: Function) {
 
 	new Setting(containerEl)
-		.setClass('ddc_ink_setting')
+		.setClass('inkc_setting')
 		.setName('Create companion note')
 		.setDesc('When using "New handwriting note" or "New drawing note" commands, create a markdown note containing the embed. When disabled, the ink file is created and opened directly without a companion note.')
 		.addToggle((toggle) => {
@@ -123,7 +123,19 @@ function insertHighLevelSettings(containerEl: HTMLElement, plugin: InkPlugin, re
 		});
 
 	new Setting(containerEl)
-		.setClass('ddc_ink_setting')
+		.setClass('inkc_setting')
+		.setName('Name files after their note')
+		.setDesc('New writing, notebook and drawing files are named after the note they are first embedded in, rather than the date and time they were created. A number is appended when a note holds more than one. Renaming an embed later still renames its file.')
+		.addToggle((toggle) => {
+			toggle.setValue(plugin.settings.nameFilesAfterNote);
+			toggle.onChange(async (value) => {
+				plugin.settings.nameFilesAfterNote = value;
+				await plugin.saveSettings();
+			});
+		});
+
+	new Setting(containerEl)
+		.setClass('inkc_setting')
 		.setName('Enable writing')
 		// .setDesc('If disabled, you will still be able to view previously created writing embeds.')
 		.setDesc('If disabled, you will not be able to add new writing embeds and those already embedded will appear as raw code. Existing writing files will be hidden in Obsidian but still exist on disk. Changing this setting will require a restart of Obsidian to take effect.')
@@ -137,7 +149,7 @@ function insertHighLevelSettings(containerEl: HTMLElement, plugin: InkPlugin, re
 		});
 
 	new Setting(containerEl)
-		.setClass('ddc_ink_setting')
+		.setClass('inkc_setting')
 		.setName('Enable notebook')
 		.setDesc('Notebook mode provides page-based writing with fixed-height pages and page navigation. Changing this setting will require a restart of Obsidian to take effect.')
 		.addToggle((toggle) => {
@@ -150,7 +162,7 @@ function insertHighLevelSettings(containerEl: HTMLElement, plugin: InkPlugin, re
 		});
 
 	new Setting(containerEl)
-		.setClass('ddc_ink_setting')
+		.setClass('inkc_setting')
 		.setName('Enable drawing')
 		// .setDesc('If disabled, you will still be able to view previously created drawing embeds.')
 		.setDesc('If disabled, you will not be able to add new drawing embeds and those already embedded will appear as raw code. Existing drawing files will be hidden in Obsidian but still exist on disk. Changing this setting will require a restart of Obsidian to take effect.')
@@ -199,12 +211,12 @@ function insertSubfolderSettings(containerEl: HTMLElement, plugin: InkPlugin, re
 		.setContent((container) => {
 			// TODO: This should be abstracted as a dom component
 			new Setting(container)
-				.setClass('ddc_ink_button-set')
+				.setClass('inkc_button-set')
 				.setName(`Where should Ink files be saved when created in a note?`)
 				// .setDesc(`The writing and drawing files will be saved into same location as other Obsidian attachments rather than the vault's root folder. The files will still be organised into the subfolders you specify below. You can change the default Obsidian attachment path in in the Files and links tab.`)
 				.addButton( (button) => {
 					button.setButtonText('Obsidian attachment folder')
-					button.setClass('ddc_ink_left-most')
+					button.setClass('inkc_left-most')
 					if(plugin.settings.noteAttachmentFolderLocation === 'obsidian') {
 						button.setCta()
 						button.setDisabled(true)
@@ -217,7 +229,7 @@ function insertSubfolderSettings(containerEl: HTMLElement, plugin: InkPlugin, re
 				})
 				.addButton( (button) => {
 					button.setButtonText('Vault root')
-					button.setClass('ddc_ink_middle')
+					button.setClass('inkc_middle')
 					if(plugin.settings.noteAttachmentFolderLocation === 'root') {
 						button.setCta()
 						button.setDisabled(true)
@@ -230,7 +242,7 @@ function insertSubfolderSettings(containerEl: HTMLElement, plugin: InkPlugin, re
 				})
 				.addButton( (button) => {
 					button.setButtonText('Next to the note')
-					button.setClass('ddc_ink_right-most')
+					button.setClass('inkc_right-most')
 					if(plugin.settings.noteAttachmentFolderLocation === 'note') {
 						button.setCta()
 						button.setDisabled(true)
@@ -243,12 +255,12 @@ function insertSubfolderSettings(containerEl: HTMLElement, plugin: InkPlugin, re
 				})
 			// TODO: This should be abstracted as a dom component
 			// new Setting(container)
-			// 	.setClass('ddc_ink_button-set')
+			// 	.setClass('inkc_button-set')
 			// 	.setName(`Where should Ink files be saved when created independantly?`)
 			// 	// .setDesc(`The writing and drawing files will be saved into same location as other Obsidian attachments rather than the vault's root folder. The files will still be organised into the subfolders you specify below. You can change the default Obsidian attachment path in in the Files and links tab.`)
 			// 	.addButton( (button) => {
 			// 		button.setButtonText('Obsidian attachment folder')
-			// 		button.setClass('ddc_ink_left-most')
+			// 		button.setClass('inkc_left-most')
 			// 		if(plugin.settings.notelessAttachmentFolderLocation === 'obsidian') {
 			// 			button.setCta()
 			// 			button.setDisabled(true)
@@ -261,7 +273,7 @@ function insertSubfolderSettings(containerEl: HTMLElement, plugin: InkPlugin, re
 			// 	})
 			// 	.addButton( (button) => {
 			// 		button.setButtonText('Vault root')
-			// 		button.setClass('ddc_ink_middle')
+			// 		button.setClass('inkc_middle')
 			// 		if(plugin.settings.notelessAttachmentFolderLocation === 'root') {
 			// 			button.setCta()
 			// 			button.setDisabled(true)
@@ -274,7 +286,7 @@ function insertSubfolderSettings(containerEl: HTMLElement, plugin: InkPlugin, re
 			// 	})
 
 			let inputSettingEl = new Setting(container)
-				.setClass('ddc_ink_setting')
+				.setClass('inkc_setting')
 				.setName('Writing files subfolder')
 				.addText((textItem) => {
 					textItem.setValue(plugin.settings.writingSubfolder.toString());
@@ -286,10 +298,10 @@ function insertSubfolderSettings(containerEl: HTMLElement, plugin: InkPlugin, re
 						if(ev.key === 'Enter') saveWritingFolder(textItem.getValue());
 					})
 				});
-			inputSettingEl.settingEl.classList.add('ddc_ink_input-medium');
+			inputSettingEl.settingEl.classList.add('inkc_input-medium');
 
 			inputSettingEl = new Setting(container)
-				.setClass('ddc_ink_setting')
+				.setClass('inkc_setting')
 				.setName('Drawing files subfolder')
 				.addText((textItem) => {
 					textItem.setValue(plugin.settings.drawingSubfolder.toString());
@@ -303,7 +315,7 @@ function insertSubfolderSettings(containerEl: HTMLElement, plugin: InkPlugin, re
 				});
 
 			inputSettingEl = new Setting(container)
-				.setClass('ddc_ink_setting')
+				.setClass('inkc_setting')
 				.setName('Notebook files subfolder')
 				.addText((textItem) => {
 					textItem.setValue(plugin.settings.notebookSubfolder.toString());
@@ -315,7 +327,7 @@ function insertSubfolderSettings(containerEl: HTMLElement, plugin: InkPlugin, re
 						if(ev.key === 'Enter') saveNotebookFolder(textItem.getValue());
 					})
 				});
-			inputSettingEl.settingEl.classList.add('ddc_ink_input-medium');
+			inputSettingEl.settingEl.classList.add('inkc_input-medium');
 		})
 
 
@@ -330,12 +342,12 @@ function insertNotebookSettings(containerEl: HTMLElement, plugin: InkPlugin, ref
 		refresh();
 	}
 
-	const sectionEl = containerEl.createDiv('ddc_ink_section ddc_ink_controls-section');
+	const sectionEl = containerEl.createDiv('inkc_section inkc_controls-section');
 	sectionEl.createEl('h2', { text: 'Notebook' });
 	sectionEl.createEl('p', { text: `Notebook mode provides page-based writing with fixed pages and page navigation. Run the action 'New notebook section' to embed a notebook.` });
 
 	const linesPerPageSetting = new Setting(sectionEl)
-		.setClass('ddc_ink_setting')
+		.setClass('inkc_setting')
 		.setName('Lines per page')
 		.setDesc('Number of ruled lines on each page (3-50). Default: 10.')
 		.addText((textItem) => {
@@ -348,10 +360,10 @@ function insertNotebookSettings(containerEl: HTMLElement, plugin: InkPlugin, ref
 				if (ev.key === 'Enter') saveLinesPerPage(textItem.getValue());
 			});
 		});
-	linesPerPageSetting.settingEl.classList.add('ddc_ink_input-medium');
+	linesPerPageSetting.settingEl.classList.add('inkc_input-medium');
 
 	new Setting(sectionEl)
-		.setClass('ddc_ink_setting')
+		.setClass('inkc_setting')
 		.setName('Show ruled lines when not editing')
 		.addToggle((toggle) => {
 			toggle.setValue(plugin.settings.notebookLinesWhenLocked);
@@ -363,7 +375,7 @@ function insertNotebookSettings(containerEl: HTMLElement, plugin: InkPlugin, ref
 		});
 
 	new Setting(sectionEl)
-		.setClass('ddc_ink_setting')
+		.setClass('inkc_setting')
 		.setName('Show background when not editing')
 		.addToggle((toggle) => {
 			toggle.setValue(plugin.settings.notebookBackgroundWhenLocked);
@@ -376,12 +388,12 @@ function insertNotebookSettings(containerEl: HTMLElement, plugin: InkPlugin, ref
 }
 
 function insertDrawingSettings(containerEl: HTMLElement, plugin: InkPlugin, refresh: Function) {
-	const sectionEl = containerEl.createDiv('ddc_ink_section ddc_ink_controls-section');
+	const sectionEl = containerEl.createDiv('inkc_section inkc_controls-section');
 	sectionEl.createEl('h2', { text: 'Drawing' });
 	sectionEl.createEl('p', { text: `While editing a Markdown file, run the action 'Insert new hand drawn section' to embed a drawing canvas.` });
 
 	new Setting(sectionEl)
-		.setClass('ddc_ink_setting')
+		.setClass('inkc_setting')
 		.setName('Show frame around drawing when not editing')
 
 		.addToggle((toggle) => {
@@ -394,7 +406,7 @@ function insertDrawingSettings(containerEl: HTMLElement, plugin: InkPlugin, refr
 		});
 
 	new Setting(sectionEl)
-		.setClass('ddc_ink_setting')
+		.setClass('inkc_setting')
 		.setName('Show background when not editing')
 
 		.addToggle((toggle) => {
@@ -425,12 +437,12 @@ function insertWritingSettings(containerEl: HTMLElement, plugin: InkPlugin, refr
 		refresh();
 	}
 
-	const sectionEl = containerEl.createDiv('ddc_ink_section ddc_ink_controls-section');
+	const sectionEl = containerEl.createDiv('inkc_section inkc_controls-section');
 	sectionEl.createEl('h2', { text: 'Writing' });
 	sectionEl.createEl('p', { text: `While editing a Markdown file, run the action 'Insert new handwriting section' to embed a section for writing with a stylus.` });
 
 	new Setting(sectionEl)
-		.setClass('ddc_ink_setting')
+		.setClass('inkc_setting')
 		.setName('Show ruled lines when not editing')
 
 		.addToggle((toggle) => {
@@ -443,7 +455,7 @@ function insertWritingSettings(containerEl: HTMLElement, plugin: InkPlugin, refr
 		});
 
 	new Setting(sectionEl)
-		.setClass('ddc_ink_setting')
+		.setClass('inkc_setting')
 		.setName('Show background when not editing')
 
 		.addToggle((toggle) => {
@@ -456,7 +468,7 @@ function insertWritingSettings(containerEl: HTMLElement, plugin: InkPlugin, refr
 		});
 	
 	new Setting(sectionEl)
-		.setClass('ddc_ink_setting')
+		.setClass('inkc_setting')
 		.setName('Dynamic stroke thickness')
 		.setDesc('When enabled, strokes vary in width based on speed and pressure (using perfect-freehand). Disable for simpler, constant-width strokes that render faster on e-ink devices.')
 		.addToggle((toggle) => {
@@ -468,7 +480,7 @@ function insertWritingSettings(containerEl: HTMLElement, plugin: InkPlugin, refr
 		});
 
 	new Setting(sectionEl)
-		.setClass('ddc_ink_setting')
+		.setClass('inkc_setting')
 		.setName('Stylus only input')
 		.setDesc('When enabled, only stylus/pen input is accepted. Touch input from fingers and palms is blocked. Useful for devices with active pens like Onyx Boox or iPad with Apple Pencil.')
 		.addToggle((toggle) => {
@@ -480,7 +492,7 @@ function insertWritingSettings(containerEl: HTMLElement, plugin: InkPlugin, refr
 		});
 
 	new Setting(sectionEl)
-		.setClass('ddc_ink_setting')
+		.setClass('inkc_setting')
 		.setName('Finger swipe scroll')
 		.setDesc('Allow finger swipe gestures to scroll the page within writing embeds. Requires Stylus only input to be enabled.')
 		.addToggle((toggle) => {
@@ -492,7 +504,7 @@ function insertWritingSettings(containerEl: HTMLElement, plugin: InkPlugin, refr
 		});
 
 	new Setting(sectionEl)
-		.setClass('ddc_ink_setting')
+		.setClass('inkc_setting')
 		.setName('Show scroll buttons')
 		.setDesc('Show up/down scroll buttons on embedded writing editors. You can disable these if you use finger swipe scrolling instead (requires Stylus only input).')
 		.addToggle((toggle) => {
@@ -504,7 +516,7 @@ function insertWritingSettings(containerEl: HTMLElement, plugin: InkPlugin, refr
 		});
 
 	new Setting(sectionEl)
-		.setClass('ddc_ink_setting')
+		.setClass('inkc_setting')
 		.setName('Fullscreen focus mode')
 		.setDesc('When opening a writing file in fullscreen, hide the tab bar, mobile navbar, and bottom navigation for a distraction-free experience.')
 		.addToggle((toggle) => {
@@ -516,7 +528,7 @@ function insertWritingSettings(containerEl: HTMLElement, plugin: InkPlugin, refr
 		});
 
 	new Setting(sectionEl)
-		.setClass('ddc_ink_setting')
+		.setClass('inkc_setting')
 		.setName('Close note when opening fullscreen')
 		.setDesc('When opening a writing or drawing file in fullscreen from an embed, automatically close the note it was embedded in.')
 		.addToggle((toggle) => {
@@ -528,7 +540,7 @@ function insertWritingSettings(containerEl: HTMLElement, plugin: InkPlugin, refr
 		});
 
 	new Setting(sectionEl)
-		.setClass('ddc_ink_setting')
+		.setClass('inkc_setting')
 		.setName('Manual line add')
 		.setDesc('Disable automatic line adding when writing reaches the bottom. Instead, a + button is shown to manually add lines. Useful for e-ink devices where automatic resizing causes writing distortion.')
 		.addToggle((toggle) => {
@@ -540,7 +552,7 @@ function insertWritingSettings(containerEl: HTMLElement, plugin: InkPlugin, refr
 		});
 
 	new Setting(sectionEl)
-		.setClass('ddc_ink_setting')
+		.setClass('inkc_setting')
 		.setName('Lines per manual add')
 		.setDesc('Number of lines added each time the + button is clicked in manual line add mode.')
 		.addText((textItem) => {
@@ -562,7 +574,7 @@ function insertWritingSettings(containerEl: HTMLElement, plugin: InkPlugin, refr
 		});
 
 	new Setting(sectionEl)
-		.setClass('ddc_ink_setting')
+		.setClass('inkc_setting')
 		.setName('Writing stroke limit')
 		.setDesc(`Too much writing in one embed can create a lag between your physical pen movement and the line appearing on screen. The stroke limit defines the maximum pen strokes before old strokes start becoming invisible until the embed is locked. Set this to a lower number if you're experiencing lag or jagged writing.`)
 
@@ -579,7 +591,7 @@ function insertWritingSettings(containerEl: HTMLElement, plugin: InkPlugin, refr
 		});
 
 	new Setting(sectionEl)
-		.setClass('ddc_ink_setting')
+		.setClass('inkc_setting')
 		.setName('Stroke streamline')
 		.setDesc('Smooths out jitter in pen strokes (0 = raw input, 1 = maximum smoothing). Higher values reduce jagged lines but add slight lag between pen and stroke. Default: 0.1. Try 0.2–0.3 for smoother writing without boox-rapid-draw.')
 		.addText((textItem) => {
@@ -597,7 +609,7 @@ function insertWritingSettings(containerEl: HTMLElement, plugin: InkPlugin, refr
 }
 
 function insertWritingLimitations(containerEl: HTMLElement) {
-	// const sectionEl = containerEl.createDiv('ddc_ink_section ddc_ink_current-limitations-section');
+	// const sectionEl = containerEl.createDiv('inkc_section inkc_current-limitations-section');
 	// const accordion = sectionEl.createEl('details');
 	// accordion.createEl('summary', { text: `Notable writing limitations (Expand for details)` });
 	// accordion.createEl('p', { text: `Only the last 300 strokes will be visible while writing (Others will dissapear). This is because the plugin currently experiences lag while displaying long amounts of writing that degrades pen fluidity.` });
@@ -605,7 +617,7 @@ function insertWritingLimitations(containerEl: HTMLElement) {
 }
 
 function insertPrereleaseWarning(containerEl: HTMLElement) {
-	const sectionEl = containerEl.createDiv('ddc_ink_section ddc_ink_prerelease-warning-section');
+	const sectionEl = containerEl.createDiv('inkc_section inkc_prerelease-warning-section');
 	const accordion = sectionEl.createEl('details', {cls: 'warning'});
 	accordion.createEl('summary', { text: `This plugin is in an Alpha state (Expand for details)` });
 	accordion.createEl('p', { text: `What does Alpha mean? Development of products like this plugin often involve moving through multiple different stages (e.g. Alpha, Beta, then Standard Release).` });
@@ -614,7 +626,7 @@ function insertPrereleaseWarning(containerEl: HTMLElement) {
 }
 
 function insertGenericWarning(containerEl: HTMLElement, text: string) {
-	const sectionEl = containerEl.createDiv('ddc_ink_section ddc_ink_generic-warning-section');
+	const sectionEl = containerEl.createDiv('inkc_section inkc_generic-warning-section');
 	const warningEl = sectionEl.createDiv('warning');
 	warningEl.createEl('p', {text});
 }

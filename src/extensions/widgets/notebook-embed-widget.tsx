@@ -6,6 +6,7 @@ import { NotebookEmbedData, applyCommonAncestorStyling, removeEmbed, resolveInkF
 import InkPlugin from "src/main";
 import NotebookEmbed from "src/tldraw/notebook/notebook-embed";
 import { NOTEBOOK_EMBED_KEY } from "src/constants";
+import { promptRemoveInkEmbed } from "src/modals/remove-embed-modal/remove-embed-modal";
 import {
 	Provider as JotaiProvider
 } from "jotai";
@@ -89,7 +90,7 @@ class NotebookEmbedWidget extends MarkdownRenderChild {
 					pageData = {pageData}
 					embedData = {this.embedData}
 					save = {this.save}
-					remove = {this.embedCtrls.removeEmbed}
+					remove = {this.promptRemove}
 					onCollapsedChange = {(collapsed: boolean) => {
 						const updatedData = { ...this.embedData, collapsed };
 						this.embedData = updatedData;
@@ -112,6 +113,16 @@ class NotebookEmbedWidget extends MarkdownRenderChild {
 
 	async onunload() {
 		this.root?.unmount();
+	}
+
+	promptRemove = () => {
+		promptRemoveInkEmbed({
+			plugin: this.plugin,
+			filetype: 'notebook',
+			inkFile: this.fileRef,
+			sourcePath: this.sourcePath,
+			removeThisEmbed: () => this.embedCtrls.removeEmbed(),
+		});
 	}
 
 	save = async (pageData: InkFileData) => {

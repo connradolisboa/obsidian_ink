@@ -139,7 +139,7 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 
 		// Apply e-reader CSS optimizations (disable animations/transitions)
 		if (ereader && editorWrapperRefEl.current) {
-			editorWrapperRefEl.current.classList.add('ddc_ink_ereader-mode');
+			editorWrapperRefEl.current.classList.add('inkc_ereader-mode');
 		}
 
 		resizeContainerIfEmbed(tlEditorRef.current);
@@ -514,7 +514,7 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 		<div
 			ref = {editorWrapperRefEl}
 			className = {classNames([
-				"ddc_ink_writing-editor",
+				"inkc_writing-editor",
 			])}
 			style={{
 				height: '100%',

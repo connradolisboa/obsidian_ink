@@ -59,9 +59,9 @@ export const DrawingEmbedPreview: React.FC<DrawingEmbedPreviewProps> = (props) =
         <div
             ref = {containerElRef}
             className = {classNames([
-                'ddc_ink_drawing-embed-preview',
-                props.plugin.settings.drawingFrameWhenLocked && 'ddc_ink_visible-frame',
-                props.plugin.settings.drawingBackgroundWhenLocked && 'ddc_ink_visible-background',
+                'inkc_drawing-embed-preview',
+                props.plugin.settings.drawingFrameWhenLocked && 'inkc_visible-frame',
+                props.plugin.settings.drawingBackgroundWhenLocked && 'inkc_visible-background',
             ])}
             style = {{
                 position: 'absolute',
@@ -103,10 +103,10 @@ export const DrawingEmbedPreview: React.FC<DrawingEmbedPreviewProps> = (props) =
                 />
             )}
 
-            <div className="ddc_ink_preview-buttons">
+            <div className="inkc_preview-buttons">
                 {props.onFullscreenClick && (
                     <button
-                        className="ddc_ink_collapse-btn"
+                        className="inkc_collapse-btn"
                         onPointerDown={(e) => {
                             e.stopPropagation();
                             props.onFullscreenClick?.();
@@ -120,7 +120,7 @@ export const DrawingEmbedPreview: React.FC<DrawingEmbedPreviewProps> = (props) =
                 )}
                 {props.onCollapseClick && (
                     <button
-                        className="ddc_ink_collapse-btn"
+                        className="inkc_collapse-btn"
                         onPointerDown={(e) => {
                             e.stopPropagation();
                             props.onCollapseClick?.();

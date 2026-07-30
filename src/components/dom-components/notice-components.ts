@@ -12,7 +12,7 @@ export function createInkNoticeTemplate(noticeNumber?: number, noticeTotal?: num
 
 export function launchPersistentInkNotice(noticeBody: DocumentFragment) {
     const notice = new Notice(noticeBody, 0);
-    notice.noticeEl.classList.add('ddc_ink_notice');
+    notice.noticeEl.classList.add('inkc_notice');
     notice.noticeEl.style.pointerEvents = "none";
     return notice;
 }
@@ -24,7 +24,7 @@ function createNoticeLabel(noticeBody: DocumentFragment, noticeNumber?: number, 
     // if(noticeTotal) labelText += '/'+noticeTotal;
     // if(noticeNumber) labelText += ')';
     labelEl.setText(labelText);
-    labelEl.classList.add('ddc_ink_notice-label');
+    labelEl.classList.add('inkc_notice-label');
     return labelEl;
 }
 
@@ -42,19 +42,19 @@ export function createNoticeCtaBar(
     let primaryBtnEl: HTMLButtonElement | null = null;
     let tertiaryBtnEl: HTMLButtonElement | null = null;
         
-    const ctaBarEl = noticeBody.createDiv('ddc_ink_notice-cta-bar');
+    const ctaBarEl = noticeBody.createDiv('inkc_notice-cta-bar');
 
     if(props.primaryLabel) {
         primaryBtnEl = ctaBarEl.createEl('button');
         primaryBtnEl.setText(props.primaryLabel);
-        primaryBtnEl.classList.add('ddc_ink_primary-btn')
+        primaryBtnEl.classList.add('inkc_primary-btn')
         primaryBtnEl.style.pointerEvents = "all";
     }
 
     if(props.tertiaryLabel) {
         tertiaryBtnEl = ctaBarEl.createEl('button');
         tertiaryBtnEl.setText(props.tertiaryLabel);
-        tertiaryBtnEl.classList.add('ddc_ink_tertiary-btn')
+        tertiaryBtnEl.classList.add('inkc_tertiary-btn')
         tertiaryBtnEl.style.pointerEvents = "all";
     }
 

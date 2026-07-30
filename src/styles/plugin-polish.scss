@@ -1,0 +1,200 @@
+// Cross-cutting polish for every surface the plugin renders.
+// Component specific rules stay with their component — this file only holds
+// things that have to apply across components: motion, tap targets, focus,
+// and the e-ink adjustments driven by the body classes set in device-classes.ts.
+
+//////////
+// Motion
+//////////
+
+// Interactive chrome should acknowledge a press. Kept short so it never gets in
+// the way of a stylus tap.
+.inkc_embed,
+.ink_primary-menu-bar,
+.ink_secondary-menu-bar,
+.inkc_modal {
+    button {
+        transition: background-color 0.12s ease, color 0.12s ease, opacity 0.15s ease, transform 0.08s ease;
+
+        &:active:not(:disabled) {
+            transform: scale(0.94);
+        }
+    }
+}
+
+// Snappier than the old 0.5s — the embed settling into its height shouldn't
+// outlast the tap that caused it.
+.inkc_resize-container.inkc_smooth-transition {
+    transition-duration: 0.28s;
+    transition-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+// The editor fades in once its camera is positioned (see tldraw-*-editor.tsx,
+// which flips opacity to 1 on mount) rather than snapping in mid-layout.
+.inkc_writing-editor,
+.inkc_notebook-editor,
+.inkc_drawing-editor {
+    transition: opacity 0.14s ease-out;
+}
+
+//////////
+// Focus
+//////////
+
+// Obsidian's own focus ring doesn't reach these because most are rendered inside
+// the tldraw container, which resets outlines.
+.inkc_embed button:focus-visible,
+.ink_primary-menu-bar button:focus-visible,
+.ink_secondary-menu-bar button:focus-visible,
+.inkc_modal button:focus-visible {
+    outline: 2px solid var(--interactive-accent);
+    outline-offset: 2px;
+}
+
+///////////////////
+// Preview chrome
+///////////////////
+
+// On a mouse, the fullscreen/collapse buttons stay out of the way until the
+// pointer is over the embed. Coarse-pointer devices get them permanently (below),
+// since there's no hover to reveal them with.
+.inkc_preview-buttons .inkc_collapse-btn {
+    opacity: 0;
+}
+
+.inkc_writing-embed-preview:hover .inkc_preview-buttons .inkc_collapse-btn,
+.inkc_drawing-embed-preview:hover .inkc_preview-buttons .inkc_collapse-btn,
+.inkc_preview-buttons .inkc_collapse-btn:focus-visible,
+.inkc_preview-buttons:hover .inkc_collapse-btn {
+    opacity: 1;
+}
+
+.inkc_collapse-btn {
+    &:hover {
+        background-color: var(--interactive-hover);
+        color: var(--text-normal);
+    }
+}
+
+// Collapsed embeds read as a single tappable strip rather than bare text.
+.inkc_collapsed-bar {
+    transition: background-color 0.12s ease;
+
+    &:hover {
+        background-color: var(--color-base-25, var(--background-modifier-hover));
+    }
+
+    // Hints that the title is editable without adding a permanent underline.
+    .inkc_collapsed-label:hover {
+        text-decoration: underline dotted;
+        text-underline-offset: 3px;
+    }
+}
+
+///////////////////////
+// Coarse pointer / touch
+///////////////////////
+
+body.inkc_coarse-pointer,
+body.inkc_ereader {
+
+    // Hover never fires reliably, so hover-revealed controls stay put.
+    .inkc_preview-buttons .inkc_collapse-btn {
+        opacity: 1;
+    }
+
+    // 44px is the smallest target that's reliably hittable with a fingertip or a
+    // stylus held at an angle.
+    .inkc_collapse-btn {
+        width: 44px;
+        height: 44px;
+        border-radius: 10px;
+
+        svg {
+            width: 22px;
+            height: 22px;
+        }
+    }
+
+    .inkc_collapsed-bar {
+        padding: 6px 12px;
+    }
+
+    // Modal buttons are the difference between deleting a file and cancelling —
+    // worth the extra height on a device being tapped with a pen.
+    .inkc_modal .inkc_modal-actions button {
+        min-height: 40px;
+        padding-inline: 14px;
+    }
+}
+
+///////////////////////
+// E-ink (Boox / Onyx)
+///////////////////////
+
+// Every animation on an e-ink panel leaves a ghost of each intermediate frame,
+// and every shadow or translucent fill becomes a dither pattern that takes a
+// full refresh to clear. Both are removed outright rather than shortened.
+body.inkc_ereader {
+
+    .inkc_embed,
+    .inkc_embed *,
+    .ink_primary-menu-bar,
+    .ink_primary-menu-bar *,
+    .ink_secondary-menu-bar,
+    .ink_secondary-menu-bar *,
+    .inkc_modal,
+    .inkc_modal * {
+        transition: none !important;
+        animation: none !important;
+    }
+
+    .inkc_embed,
+    .inkc_modal {
+        button,
+        .inkc_collapsed-bar,
+        .inkc_preview-page-nav {
+            box-shadow: none !important;
+        }
+    }
+
+    // Grey-on-grey chrome disappears on a 16-level panel. An outline keeps the
+    // controls findable without relying on fill contrast.
+    .inkc_collapse-btn,
+    .ink_primary-menu-bar button,
+    .ink_secondary-menu-bar button {
+        border: 1px solid var(--text-normal);
+    }
+
+    .inkc_collapsed-bar {
+        border: 1px solid var(--text-muted);
+    }
+
+    // The label is set in muted italics for print-like softness on LCD; on e-ink
+    // that lands under the panel's contrast floor.
+    .inkc_collapsed-label,
+    .inkc_collapsed-title-input {
+        color: var(--text-normal);
+        font-style: normal;
+    }
+
+    // Page navigation is normally revealed on hover — there is no hover here.
+    .inkc_preview-page-nav {
+        opacity: 1;
+    }
+}
+
+//////////////////////////
+// Reduced motion (OS level)
+//////////////////////////
+
+@media (prefers-reduced-motion: reduce) {
+    .inkc_embed,
+    .inkc_embed *,
+    .ink_primary-menu-bar *,
+    .ink_secondary-menu-bar *,
+    .inkc_modal * {
+        transition: none !important;
+        animation: none !important;
+    }
+}

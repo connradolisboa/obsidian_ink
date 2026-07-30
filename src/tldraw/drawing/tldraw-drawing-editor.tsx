@@ -9,7 +9,7 @@ import { TFile } from 'obsidian';
 import { savePngExport } from "src/utils/savePngExport";
 import { duplicateWritingFile, rememberDrawingFile } from "src/utils/rememberDrawingFile";
 import { InkFileData, buildDrawingFileData } from 'src/utils/page-file';
-import { DRAW_SHORT_DELAY_MS, DRAW_LONG_DELAY_MS, DRAWING_INITIAL_ASPECT_RATIO } from 'src/constants';
+import { DRAW_SHORT_DELAY_MS, DRAW_LONG_DELAY_MS, DRAW_LONG_DELAY_MS_EREADER, DRAWING_INITIAL_ASPECT_RATIO } from 'src/constants';
 import { PrimaryMenuBar } from '../primary-menu-bar/primary-menu-bar';
 import DrawingMenu from '../drawing-menu/drawing-menu';
 import ExtendedDrawingMenu from '../extended-drawing-menu/extended-drawing-menu';
@@ -128,7 +128,7 @@ export function TldrawDrawingEditor(props: TldrawDrawingEditorProps) {
 
 		// Apply e-reader CSS optimizations
 		if (ereader && editorWrapperRefEl.current) {
-			editorWrapperRefEl.current.classList.add('ddc_ink_ereader-mode');
+			editorWrapperRefEl.current.classList.add('inkc_ereader-mode');
 		}
 
 		// tldraw content setup
@@ -204,7 +204,7 @@ export function TldrawDrawingEditor(props: TldrawDrawingEditorProps) {
 			props.saveControlsReference({
 				save: () => completeSave(editor),
 				saveAndHalt: async (): Promise<void> => {
-					await completeSave(editor)
+					await completeSave(editor, /* forceSvg */ true)
 					unmountActions();	// Clean up immediately so nothing else occurs between this completeSave and a future unmount
 				},
 			})
@@ -264,7 +264,7 @@ export function TldrawDrawingEditor(props: TldrawDrawingEditorProps) {
 			() => {
 				completeSave(editor);
 			},
-			DRAW_LONG_DELAY_MS
+			isEreader() ? DRAW_LONG_DELAY_MS_EREADER : DRAW_LONG_DELAY_MS
 		)
 
 	};
@@ -290,8 +290,21 @@ export function TldrawDrawingEditor(props: TldrawDrawingEditorProps) {
 		props.save(pageData);
 	}
 
-	const completeSave = async (editor: Editor): Promise<void> => {
+	const completeSave = async (editor: Editor, forceSvg: boolean = false): Promise<void> => {
 		verbose('completeSave');
+
+		// On e-readers, skip SVG preview generation while the user is still drawing —
+		// it's the most expensive thing this editor does and the preview is only read
+		// back when the file renders as an embed. saveAndHalt forces it so the closing
+		// snapshot still gets a preview.
+		if (isEreader() && !forceSvg) {
+			props.save(buildDrawingFileData({
+				tlEditorSnapshot: getSnapshot(editor.store),
+				previewIsOutdated: true,
+			}));
+			return;
+		}
+
 		let previewUri;
 
 		const tlEditorSnapshot = getSnapshot(editor.store);
@@ -327,6 +340,8 @@ export function TldrawDrawingEditor(props: TldrawDrawingEditorProps) {
 	const customExtendedMenu = [
 		{
 			text: 'Grid on/off',
+			icon: 'grid',
+			section: 'inkc-view',
 			action: () => {
 				const editor = getTlEditor();
 				if(editor) {
@@ -343,7 +358,7 @@ export function TldrawDrawingEditor(props: TldrawDrawingEditorProps) {
 		<div
 			ref = {editorWrapperRefEl}
 			className = {classNames([
-				"ddc_ink_drawing-editor"
+				"inkc_drawing-editor"
 			])}
 			style = {{
 				height: '100%',

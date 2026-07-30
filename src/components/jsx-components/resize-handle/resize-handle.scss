@@ -1,6 +1,6 @@
 
 
-.ddc_ink_resize-handle {
+.inkc_resize-handle {
     position: absolute;
     z-index: 1000;
     // right: var(--file-margins, 5%);
@@ -32,7 +32,7 @@
 
 
 // Animation
-.ddc_ink_resize-handle {
+.inkc_resize-handle {
     animation: menu-button_scale-up 0.3s 0.1s ease-out;
     animation-delay: 0.2s;
     animation-fill-mode: both;

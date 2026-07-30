@@ -12,7 +12,7 @@ import { InkFileData, stringifyPageData } from "src/utils/page-file";
 ////////
 ////////
 
-export const WRITING_VIEW_TYPE = "ink_writing-view";
+export const WRITING_VIEW_TYPE = "inkc_writing-view";
 
 ////////
 
@@ -99,14 +99,14 @@ export class WritingView extends TextFileView {
     enableFocusMode(): void {
         if(this.plugin.settings.fullscreenFocusMode && !this.focusModeActive) {
             this.focusModeActive = true;
-            document.body.classList.add('ddc_ink_focus-mode');
+            document.body.classList.add('inkc_focus-mode');
         }
     }
 
     disableFocusMode(): void {
         if(this.focusModeActive) {
             this.focusModeActive = false;
-            document.body.classList.remove('ddc_ink_focus-mode');
+            document.body.classList.remove('inkc_focus-mode');
         }
     }
 

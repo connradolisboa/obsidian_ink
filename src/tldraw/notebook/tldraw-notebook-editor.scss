@@ -3,10 +3,10 @@
 /////////
 /////////
 
-.ddc_ink_notebook-editor {
+.inkc_notebook-editor {
     transition: height 0.5s ease;
 
-    &.ddc_ink_ereader-mode {
+    &.inkc_ereader-mode {
         transition: none;
 
         .tl-container,
@@ -32,7 +32,7 @@
     }
 }
 
-.ddc_ink_notebook-editor {
+.inkc_notebook-editor {
     outline: solid 8px var(--color-base-10);
     border-radius: 20px;
 

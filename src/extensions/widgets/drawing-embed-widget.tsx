@@ -7,6 +7,7 @@ import { DrawingEmbedData, applyCommonAncestorStyling, rebuildDrawingEmbed, remo
 import InkPlugin from "src/main";
 import DrawingEmbed from "src/tldraw/drawing/drawing-embed";
 import { DRAW_EMBED_KEY } from "src/constants";
+import { promptRemoveInkEmbed } from "src/modals/remove-embed-modal/remove-embed-modal";
 import { Provider } from "react-redux";
 import { store } from "src/logic/stores";
 import { 
@@ -121,7 +122,7 @@ class DrawingEmbedWidget extends MarkdownRenderChild {
 					embedData = {this.embedData}
 					saveSrcFile = {this.save}
 					setEmbedProps = {this.setEmbedProps}
-					remove = {this.embedCtrls.removeEmbed}
+					remove = {this.promptRemove}
 					width = {this.embedData.width}
 					aspectRatio = {this.embedData.aspectRatio}
 					onCollapsedChange = {(collapsed: boolean) => {
@@ -145,6 +146,16 @@ class DrawingEmbedWidget extends MarkdownRenderChild {
 
 	// Helper functions
 	///////////////////
+
+	promptRemove = () => {
+		promptRemoveInkEmbed({
+			plugin: this.plugin,
+			filetype: 'drawing',
+			inkFile: this.fileRef,
+			sourcePath: this.sourcePath,
+			removeThisEmbed: () => this.embedCtrls.removeEmbed(),
+		});
+	}
 
 	save = async (pageData: InkFileData) => {
 		if(!this.fileRef) return;

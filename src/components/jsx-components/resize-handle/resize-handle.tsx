@@ -18,8 +18,8 @@ export const ResizeHandle: React.FC<ResizeHandleProps> = (props) => {
 
 	return <button
 		className = {classNames([
-			'ddc_ink_resize-handle',
-			'ddc_ink_vertical',
+			'inkc_resize-handle',
+			'inkc_vertical',
 		])}
 		// onMouseDown={startResizing}
 		onPointerDown={startResizing}

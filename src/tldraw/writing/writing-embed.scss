@@ -1,7 +1,7 @@
 
 
 
-.ddc_ink_resize-container.ddc_ink_smooth-transition {
+.inkc_resize-container.inkc_smooth-transition {
     transition-property: height;
     transition-duration: 0.5s;
     transition-timing-function: ease-out;
@@ -11,14 +11,14 @@
 
 
 // Collapse/expand button and collapsed bar (common to writing and drawing embeds)
-.ddc_ink_embed {
-    &.ddc_ink_collapsed {
+.inkc_embed {
+    &.inkc_collapsed {
         padding-top: 0.25em !important;
         padding-bottom: 0.25em !important;
     }
 }
 
-.ddc_ink_collapsed-bar {
+.inkc_collapsed-bar {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -27,14 +27,14 @@
     background-color: var(--color-base-20);
     cursor: default;
 
-    .ddc_ink_collapsed-label {
+    .inkc_collapsed-label {
         font-size: 13px;
         color: var(--text-muted);
         font-style: italic;
         cursor: text;
     }
 
-    .ddc_ink_collapsed-title-input {
+    .inkc_collapsed-title-input {
         font-size: 13px;
         color: var(--text-muted);
         font-style: italic;
@@ -48,7 +48,7 @@
     }
 }
 
-.ddc_ink_collapse-btn {
+.inkc_collapse-btn {
     position: absolute;
     top: 4px;
     right: 4px;
@@ -75,18 +75,18 @@
     }
 }
 
-.ddc_ink_collapsed-bar-buttons {
+.inkc_collapsed-bar-buttons {
     display: flex;
     gap: 2px;
 }
 
-.ddc_ink_collapsed-bar .ddc_ink_collapse-btn {
+.inkc_collapsed-bar .inkc_collapse-btn {
     position: static;
     opacity: 1;
     background: none;
 }
 
-.ddc_ink_preview-buttons {
+.inkc_preview-buttons {
     position: absolute;
     top: 4px;
     right: 4px;
@@ -94,21 +94,21 @@
     display: flex;
     gap: 2px;
 
-    .ddc_ink_collapse-btn {
+    .inkc_collapse-btn {
         position: static;
     }
 }
 
-.ddc_ink_writing-embed-preview:hover .ddc_ink_collapse-btn,
-.ddc_ink_drawing-embed-preview:hover .ddc_ink_collapse-btn,
-.ddc_ink_writing-embed-preview:hover .ddc_ink_preview-buttons .ddc_ink_collapse-btn,
-.ddc_ink_drawing-embed-preview:hover .ddc_ink_preview-buttons .ddc_ink_collapse-btn {
+.inkc_writing-embed-preview:hover .inkc_collapse-btn,
+.inkc_drawing-embed-preview:hover .inkc_collapse-btn,
+.inkc_writing-embed-preview:hover .inkc_preview-buttons .inkc_collapse-btn,
+.inkc_drawing-embed-preview:hover .inkc_preview-buttons .inkc_collapse-btn {
     opacity: 1;
 }
 
 // TODO: This is common to drawing and writing files. It should be moved to a common area.
-.markdown-source-view.mod-cm6 .cm-content > .cm-preview-code-block.cm-embed-block.markdown-rendered.ddc_ink_embed-block,
-.markdown-source-view.mod-cm6 .cm-content > .cm-preview-code-block.cm-embed-block.markdown-rendered.ddc_ink_embed-block:hover {
+.markdown-source-view.mod-cm6 .cm-content > .cm-preview-code-block.cm-embed-block.markdown-rendered.inkc_embed-block,
+.markdown-source-view.mod-cm6 .cm-content > .cm-preview-code-block.cm-embed-block.markdown-rendered.inkc_embed-block:hover {
 
     // Enables placing elements outside of the embed
     contain: unset !important;
@@ -131,8 +131,8 @@
 // margin resets to handle themes that set margins via either property type.
 // When applyCommonAncestorStyling() determines the embed should extend to
 // full width, it applies inline-style !important overrides which take precedence.
-.cm-preview-code-block.cm-embed-block.markdown-rendered.ddc_ink_embed-block,
-.cm-preview-code-block.cm-embed-block.markdown-rendered.ddc_ink_embed-block:hover {
+.cm-preview-code-block.cm-embed-block.markdown-rendered.inkc_embed-block,
+.cm-preview-code-block.cm-embed-block.markdown-rendered.inkc_embed-block:hover {
     margin-inline-start: 0 !important;
     margin-inline-end: 0 !important;
     margin-left: 0 !important;

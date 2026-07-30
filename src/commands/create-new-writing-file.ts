@@ -8,8 +8,8 @@ import { TFile } from "obsidian";
 ////////
 ////////
 
-const createNewWritingFile = async (plugin: InkPlugin, instigatingFile?: TFile | null) => {
-    const filepath = await getNewTimestampedWritingFilepath(plugin, instigatingFile);
+const createNewWritingFile = async (plugin: InkPlugin, instigatingFile?: TFile | null, basenameOverride?: string) => {
+    const filepath = await getNewTimestampedWritingFilepath(plugin, instigatingFile, basenameOverride);
     const pageData = buildWritingFileData({
         tlEditorSnapshot: defaultTLEditorWritingSnapshot,
     });

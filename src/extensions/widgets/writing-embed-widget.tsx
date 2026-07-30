@@ -7,6 +7,7 @@ import { WritingEmbedData as WritingEmbedData, applyCommonAncestorStyling, remov
 import InkPlugin from "src/main";
 import WritingEmbed from "src/tldraw/writing/writing-embed";
 import { WRITE_EMBED_KEY } from "src/constants";
+import { promptRemoveInkEmbed } from "src/modals/remove-embed-modal/remove-embed-modal";
 import { 
 	Provider as JotaiProvider
 } from "jotai";
@@ -81,7 +82,7 @@ class WritingEmbedWidget extends MarkdownRenderChild {
 					pageData = {pageData}
 					embedData = {this.embedData}
 					save = {this.save}
-					remove = {this.embedCtrls.removeEmbed}
+					remove = {this.promptRemove}
 					onCollapsedChange = {(collapsed: boolean) => {
 						const updatedData = { ...this.embedData, collapsed };
 						this.embedData = updatedData;
@@ -103,6 +104,16 @@ class WritingEmbedWidget extends MarkdownRenderChild {
 
 	// Helper functions
 	///////////////////
+
+	promptRemove = () => {
+		promptRemoveInkEmbed({
+			plugin: this.plugin,
+			filetype: 'writing',
+			inkFile: this.fileRef,
+			sourcePath: this.sourcePath,
+			removeThisEmbed: () => this.embedCtrls.removeEmbed(),
+		});
+	}
 
 	save = async (pageData: InkFileData) => {
 

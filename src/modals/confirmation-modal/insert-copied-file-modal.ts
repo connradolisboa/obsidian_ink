@@ -31,9 +31,9 @@ export class InsertCopiedFileModal extends Modal {
 		// contentEl.createEl('p', {text: `Embed reference to existing file or make a duplicate?`});
 		
 		new Setting(contentEl)
-			.setClass('ddc_ink_primary-2-button-set')
+			.setClass('inkc_primary-2-button-set')
 			.addButton( btn => {
-				btn.setClass('ddc_ink_button');
+				btn.setClass('inkc_button');
 				btn.setCta();
 				btn.setButtonText('Reference existing file');
 				btn.onClick(() => {
@@ -42,7 +42,7 @@ export class InsertCopiedFileModal extends Modal {
 				})
 			})
 			.addButton( btn => {
-				btn.setClass('ddc_ink_button');
+				btn.setClass('inkc_button');
 				btn.setCta();
 				btn.setButtonText('Make duplicate');
 				btn.onClick( () => {
@@ -52,9 +52,9 @@ export class InsertCopiedFileModal extends Modal {
 			});
 
 		new Setting(contentEl)
-			.setClass('ddc_ink_modal-actions')
+			.setClass('inkc_modal-actions')
 			.addButton( btn => {
-				btn.setClass('ddc_ink_backward-button');
+				btn.setClass('inkc_backward-button');
 				btn.setButtonText('Cancel');
 				btn.onClick(() => {
 					this.close()

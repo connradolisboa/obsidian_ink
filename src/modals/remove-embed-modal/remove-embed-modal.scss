@@ -1,0 +1,72 @@
+.inkc_modal {
+
+    .inkc_modal-body {
+        // Keeps the modal from jumping between the "checking…" state and the result.
+        min-height: 3.5em;
+    }
+
+    .inkc_modal-message {
+        margin: 0 0 0.75em;
+        line-height: 1.5;
+        color: var(--text-normal);
+    }
+
+    .inkc_is-muted {
+        color: var(--text-muted);
+    }
+
+    .inkc_modal-note-list {
+        margin: 0 0 0.5em;
+        padding-inline-start: 1.2em;
+        max-height: 9em;
+        overflow-y: auto;
+
+        li {
+            margin: 0.15em 0;
+            font-size: var(--font-ui-small);
+            color: var(--text-muted);
+        }
+    }
+
+    .inkc_modal-note-link {
+        color: var(--text-accent);
+        cursor: pointer;
+        text-decoration: none;
+
+        &:hover {
+            text-decoration: underline;
+        }
+    }
+
+    .inkc_modal-note-count {
+        color: var(--text-faint);
+    }
+
+    // One flush row of actions, aligned right like Obsidian's own modals.
+    .inkc_modal-actions {
+        border-top: none;
+        padding-bottom: 0;
+
+        .setting-item-info { display: none; }
+
+        .setting-item-control {
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: flex-end;
+
+            // Setting adds its own margins between controls — the gap covers it.
+            > * { margin: 0 !important; }
+        }
+    }
+}
+
+// Stack the actions on narrow screens (phones, and Boox devices in portrait)
+// so no button ends up clipped or squeezed to an untappable width.
+@media (max-width: 480px) {
+    .inkc_modal .inkc_modal-actions .setting-item-control {
+        flex-direction: column-reverse;
+        align-items: stretch;
+
+        > button { width: 100%; }
+    }
+}

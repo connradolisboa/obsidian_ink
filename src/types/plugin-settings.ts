@@ -10,6 +10,7 @@ export interface PluginSettings {
 	},
 	// General
 	createCompanionNote: boolean,
+	nameFilesAfterNote: boolean,
 	customAttachmentFolders: boolean,
     noteAttachmentFolderLocation: 'obsidian' | 'root' | 'note',
     notelessAttachmentFolderLocation: 'obsidian' | 'root',
@@ -52,6 +53,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 	},
 	// General
 	createCompanionNote: true,
+	nameFilesAfterNote: true,
 	customAttachmentFolders: false,
     noteAttachmentFolderLocation: 'obsidian',
 	notelessAttachmentFolderLocation: 'obsidian',

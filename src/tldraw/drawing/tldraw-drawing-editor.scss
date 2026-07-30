@@ -3,10 +3,10 @@
 /////////
 /////////
 
-.ddc_ink_drawing-editor {
+.inkc_drawing-editor {
     transition: height 0.5s ease;
 
-    &.ddc_ink_ereader-mode {
+    &.inkc_ereader-mode {
         transition: none;
 
         .tl-container,
@@ -37,7 +37,7 @@
 // Auto adapts to themes
 ////////////////////////
 
-.ddc_ink_drawing-editor {
+.inkc_drawing-editor {
 
     // outline thickened but not coloured
     outline: solid 8px var(--color-base-10);
