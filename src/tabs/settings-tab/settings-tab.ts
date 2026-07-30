@@ -1,4 +1,3 @@
-import { createSupportButtonSet } from 'src/components/dom-components/support-button-set';
 import './settings-tab.scss';
 import { App, PluginSettingTab, Setting } from "obsidian";
 import InkPlugin from "src/main";
@@ -60,10 +59,6 @@ export class MySettingsTab extends PluginSettingTab {
 					}).open();
 				})
 			})
-
-		createSupportButtonSet(containerEl);
-		
-
 	}
 }
 
@@ -97,22 +92,18 @@ function insertSetupGuide(plugin: InkPlugin, containerEl: HTMLElement) {
 
 function insertMoreInfoLinks(containerEl: HTMLElement) {
 	const sectionEl = containerEl.createDiv('ddc_ink_section');
-	sectionEl.createEl('p', { text: `For information on this plugin's development, visit the links below. Feel free to leave comments in the development diaries on YouTube.` });
+	sectionEl.createEl('p', { text: `This is a personal fork, independent from the original Ink plugin's releases.` });
 	const list = sectionEl.createEl('ul');
 	list.createEl('li').createEl('a', {
-		href: 'https://github.com/daledesilva/obsidian_ink/releases',
+		href: 'https://github.com/connradolisboa/obsidian_ink/releases',
 		text: 'Latest Changes'
 	});
 	list.createEl('li').createEl('a', {
-		href: 'https://github.com/daledesilva/obsidian_ink',
-		text: 'Roadmap'
+		href: 'https://github.com/connradolisboa/obsidian_ink',
+		text: 'Source'
 	});
 	list.createEl('li').createEl('a', {
-		href: 'https://www.youtube.com/playlist?list=PLAiv7XV4xFx2NMRSCxdGiVombKO-TiMAL',
-		text: 'Development Diaries.'
-	});
-	list.createEl('li').createEl('a', {
-		href: 'https://github.com/daledesilva/obsidian_ink/issues',
+		href: 'https://github.com/connradolisboa/obsidian_ink/issues',
 		text: 'Request feature / Report bug.'
 	});
 }

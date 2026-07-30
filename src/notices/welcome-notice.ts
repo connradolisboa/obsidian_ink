@@ -156,22 +156,7 @@ function showDevelopmentWelcomeTip(plugin: InkPlugin) {
     const noticeBody = createInkNoticeTemplate();
     noticeBody.createEl('h1').setText(`Get involved...`);
     noticeBody.createEl('p').setText(`If you notice any bugs, please report them through the link in the settings.`);
-    noticeBody.createEl('p').setText(`You can also follow along with development and let me know which features are important to you at the links below.`);
 
-    const link1 = noticeBody.createEl('a');
-    link1.setAttribute('href', 'https://youtube.com/playlist?list=PLAiv7XV4xFx2NMRSCxdGiVombKO-TiMAL&si=GVp9ILvCAaRTwyYd')
-    link1.setText(`View development diaries`);
-    // Prevent clicking link from closing notice
-    link1.onClickEvent( e => e.stopPropagation())
-
-    noticeBody.createEl('br');
-    
-    const link2 = noticeBody.createEl('a');
-    link2.setAttribute('href', 'https://designdebt.club/socials')
-    link2.setText(`Follow on socials`);
-    // Prevent clicking link from closing notice
-    link2.onClickEvent( e => e.stopPropagation())
-    
     const {
         tertiaryBtnEl
     } = createNoticeCtaBar(noticeBody, {

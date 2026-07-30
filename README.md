@@ -1,7 +1,5 @@
-Forked the original plugin and improved the functionalities for using it with Onyx Boox devices. I recommending using https://github.com/sergeylappo/boox-rapid-draw with the plugin.
-
-# Ink
-A plugin for [Obsidian](https://obsidian.md) that adds the ability to hand write or draw with a stylus between paragraphs in your notes.
+# Ink Custom
+A personal fork of the [Ink](https://github.com/daledesilva/obsidian_ink) plugin for [Obsidian](https://obsidian.md), maintained independently under its own plugin ID (`ink-custom`) so it no longer collides with the original plugin's updates. Forked and improved for using it with Onyx Boox devices — I recommend using https://github.com/sergeylappo/boox-rapid-draw with the plugin.
 
 Hand write or draw directly between paragraphs in your notes using a digital pen, stylus, or Apple pencil. Useful for handwriting, sketches, scribbles, or even math equations and scientific notation. Runs on the tldraw framework and drawing provides an infinite canvas.
 
@@ -19,31 +17,6 @@ Hand write or draw directly between paragraphs in your notes using a digital pen
 
 **Demo Note**<br/>
 In the video above, I have set up this plugin's commands to be visible in another plugin called [Slash Commander](https://github.com/alephpiece/obsidian-slash-commander) - This allows me to select the insert command quickly by simply typing `/`.
-
-## 📓 Development Diaries
-I record regular development diaries. [Subscribe and follow along](https://www.youtube.com/@designdebtclub) to see features in development.
-
-<p align="center">
-    <a href="https://youtube.com/playlist?list=PLAiv7XV4xFx2NMRSCxdGiVombKO-TiMAL&si=TarnAk9A4kzzy0Gu" target="_blank">
-        <img src="docs/media/devdiary-screenshot.jpg" width="60%" alt="Screenshot of devdiary video"><br/>
-        Click to view development diaries
-    </a>
-</p>
-
-<p align="center">
-  <a href="https://twitter.com/daledesilva" target="_blank_">
-    <img src="docs/media/twitter-btn.svg" height="40px" alt="Dale de Silva on Twitter">
-  </a>
-  <a href="https://indieweb.social/@daledesilva" target="_blank">
-    <img src="docs/media/mastodon-btn.svg" height="40px" alt="Dale de Silva on Mastodon">
-  </a>
-  <a href="https://www.threads.net/@daledesilva" target="_blank">
-    <img src="docs/media/threads-btn.svg" height="40px" alt="Dale de Silva on Threads">
-  </a>
-  <a href="https://bsky.app/profile/daledesilva.bsky.social" target="_blank">
-    <img src="docs/media/bluesky-btn.svg" height="40px" alt="Dale de Silva on Bluesky">
-  </a>
-</p>
 
 ## 🗺️ Rough roadmap
 I've been building this plugin since December 2023 and I'm currently developing it further and using it daily.<br/>
@@ -80,29 +53,15 @@ Below are the high level features in my current development plan along with thei
 </details>
 
 ## ⚠️ Be careful
->As with most Obsidian plugins, this is a free gift to the community, provided 'as is' to help you out. While I'm doing my best to make it awesome (And I love feedback), there are always chances things might not work quite right. To be safe, **please always back up your files**.
+>This is a personal fork, provided 'as is'. There are always chances things might not work quite right. To be safe, **please always back up your files**.
 
 ## 🪳 Report a bug
-Found something that's not quite working right or do you have a feature request? Don't be shy, feel free to make some noise over on the [GitHub Issues](https://github.com/daledesilva/obsidian_project-browser/issues) page. But be sure to check if someone has already posted the same issue and comment on theirs if they have.
+Found something that's not quite working right or do you have a feature request? Open an issue on this fork's [GitHub Issues](https://github.com/connradolisboa/obsidian_ink/issues) page.
 
 ## 💾 Installation
-You can find this plugin in the plugin directory within Obsidian.
+This fork is not published in Obsidian's Community Plugins directory. It's installed manually (or via BRAT) under the plugin ID `ink-custom`, which keeps it fully independent from the original `ink` plugin — both can coexist without update conflicts.
 <details>
-<summary>Click for help installing plugins</summary>
-
-1. Open your Obsidian vault and go to **Settings**.
-
-2. Click on **Community Plugins** in the side bar.
-
-3. If you haven't already, you will need to turn on community plugins.
-
-4. Search 'Dale de Silva' and install **Ink**.
-</details>
-
-If you would like to install new versions of the plugin that are still being tested, you can install this plugin through BRAT instead.
-BRAT is another community plugin that allows you to install a Beta version. New features are released as a Beta version first and can take from a few days to a month before landing in the standard version.
-<details>
-<summary>Click for Beta version installation instructions</summary>
+<summary>Click for Beta version installation instructions via BRAT</summary>
 
 1. Open your Obsidian vault and go to **Settings**.
 2. Click on **Community Plugins** in the side bar.
@@ -111,18 +70,18 @@ BRAT is another community plugin that allows you to install a Beta version. New 
 5. Scroll down and **activate** BRAT.
 6. In the BRAT menu in the side pane, select **Add Beta Plugin**.
 7. Follow the instructions presented.
-8. When a URL is requested, use: `https://github.com/daledesilva/obsidian_ink`
+8. When a URL is requested, use: `https://github.com/connradolisboa/obsidian_ink`
 
 </details>
 <details>
 <summary>Click for Beta version update instructions</summary>
 
 - BRAT is set to update Beta plugins by default on startup, however, this can sometimes take some time.
-- To force an update, run BRAT's Obsidian commnd `Choose a single plugin to update` and choose Ink.
+- To force an update, run BRAT's Obsidian commnd `Choose a single plugin to update` and choose Ink Custom.
 </details>
 
 ## 🏛️ License
->Please note that while this repository is public and can be browsed and modified for your personal use, it is not open source. It is licensed under [CC BY-NC-ND 4.0](https://creativecommons.org/licenses/by-nc-nd/4.0/)
+>This fork is based on the original [Ink](https://github.com/daledesilva/obsidian_ink) plugin by Dale de Silva, which is licensed under [CC BY-NC-ND 4.0](https://creativecommons.org/licenses/by-nc-nd/4.0/) — modification for personal use is permitted, but the license does not permit distributing derivative works. This fork is kept for personal, non-commercial use.
 
 ## 🗒️ Notes
 
@@ -143,35 +102,5 @@ Note, however, that the embed format described above will apply here also, which
 
 Note also that the drawing functionality will not take the place of Excalidraw. Excalidraw provides a feature rich ability to diagram holistically, whereas this plugin is built around freeform natural pen input. I personally like sketching more freeform with only minimal aid of drag and drop elements, so this is what drawing here is focussed on as that aligns with a handwritten style of taking notes as well.
 
-## ❤️ Support
-If you find this plugin saves you time or helps you in some way, please consider supporting my development of plugins and other free community material like this.
-
-<p>
-  <a href="https://twitter.com/daledesilva" target="_blank_">
-    <img src="docs/media/twitter-btn.svg" height="40px" alt="Dale de Silva on Twitter">
-  </a>
-  <a href="https://indieweb.social/@daledesilva" target="_blank">
-    <img src="docs/media/mastodon-btn.svg" height="40px" alt="Dale de Silva on Mastodon">
-  </a>
-  <a href="https://www.threads.net/@daledesilva" target="_blank">
-    <img src="docs/media/threads-btn.svg" height="40px" alt="Dale de Silva on Threads">
-  </a>
-  <a href="https://bsky.app/profile/daledesilva.bsky.social" target="_blank">
-    <img src="docs/media/bluesky-btn.svg" height="40px" alt="Dale de Silva on Bluesky">
-  </a>
-  <a href="https://ko-fi.com/N4N3JLUCW" target="_blank">
-    <img src="docs/media/support-btn.svg" height="40px" alt="Support me on Ko-fi">
-  </a>
-</p>
-
-## 🤖 My other work
-You can find links to my other projects on [designdebt.club](https://designdebt.club), where I blog about design and development, as well as release other plugins like this one. You can also find my writing at at [falterinresolute.com](https://falterinresolute.com) where I combine philosophy and animation.
-
-<p>
-  <a href="https://designdebt.club" target="_blank">
-    <img src="docs/media/design-debt-club-btn.svg" height="50px" alt="Design Debt Club">
-  </a>
-  <a href="https://falterinresolute.com" target="_blank">
-    <img src="docs/media/falter-in-resolute-btn.svg" height="50px" alt="Falter In Resolute Blog">
-  </a>
-</p>
+## ❤️ Credit
+The original **Ink** plugin was created by Dale de Silva — [designdebt.club](https://designdebt.club). If you'd like to support that work directly, see the original repo: [github.com/daledesilva/obsidian_ink](https://github.com/daledesilva/obsidian_ink).

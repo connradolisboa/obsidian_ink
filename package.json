@@ -13,7 +13,7 @@
 		"public-release": "sh ./scripts/public-release.sh"
 	},
 	"keywords": [],
-	"author": "",
+	"author": "Connrado Lisboa",
 	"license": "MIT",
 	"devDependencies": {
 		"@babel/core": "^7.24.7",
