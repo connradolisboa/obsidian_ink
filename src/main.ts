@@ -24,6 +24,7 @@ import { showVersionNotice } from './notices/version-notices';
 import { atom, useSetAtom } from 'jotai';
 import { debug } from './utils/log-to-console';
 import { updateInkEmbedLinksInVault } from './utils/embed';
+import { installDeleteNoteWithEmbedsPrompt } from './utils/delete-note-with-embeds';
 import { INK_FILE_EXTS } from './constants';
 import { drawDefaultSvgStr, writeDefaultSvgStr, writeExistingSvgStr, writePasteSvgStr } from './graphics/icons/command-icons';
 import { drawExistingSvgStr, drawPasteSvgStr } from './graphics/icons/command-icons';
@@ -89,6 +90,8 @@ export default class InkPlugin extends Plugin {
 			if (!INK_FILE_EXTS.includes(file.extension)) return;
 			await updateInkEmbedLinksInVault(this, file.path, oldPath);
 		}));
+
+		installDeleteNoteWithEmbedsPrompt(this);
 
 		// // If the plugin hooks up any global DOM events (on parts of the app that doesn't belong to this plugin)
 		// // Using this function will automatically remove the event listener when this plugin is disabled.

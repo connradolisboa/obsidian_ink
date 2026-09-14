@@ -29,6 +29,7 @@ import com.onyx.android.sdk.data.note.TouchPoint
 import com.onyx.android.sdk.pen.RawInputCallback
 import com.onyx.android.sdk.pen.TouchHelper
 import com.onyx.android.sdk.pen.data.TouchPointList
+import com.sergeylappo.booxrapiddraw.utils.BridgePrefs
 
 private const val CHANNEL_ID = "rapid_draw_channel_overlay_01"
 private const val STROKE_WIDTH = 3.0f
@@ -71,6 +72,14 @@ class OverlayShowingService : Service(), BridgeServerListener {
             return START_NOT_STICKY // Prevents service from being recreated
         }
 
+        if (intent?.action == "TOGGLE_OBSIDIAN_ONLY") {
+            val newValue = !BridgePrefs.isObsidianOnlyMode(this)
+            BridgePrefs.setObsidianOnlyMode(this, newValue)
+            applyCaptureState()
+            createForegroundNotification() // rebuild so the action label reflects the new state
+            return START_STICKY
+        }
+
         Toast.makeText(this, "Starting Rapid Draw Service", Toast.LENGTH_SHORT).show()
         return START_STICKY // Service will be recreated if killed
     }
@@ -94,11 +103,24 @@ class OverlayShowingService : Service(), BridgeServerListener {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+        // Obsidian-plugin companion bridge: lets the general-purpose (works in any app)
+        // behavior be switched to Obsidian-writing-embed-only, and back, without a rebuild.
+        // See /COMPANION_APP_RESEARCH.md in the parent repo.
+        val obsidianOnly = BridgePrefs.isObsidianOnlyMode(this)
+        val toggleObsidianOnlyIntent = PendingIntent.getService(
+            this,
+            1,
+            Intent(this, OverlayShowingService::class.java).apply { action = "TOGGLE_OBSIDIAN_ONLY" },
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val toggleLabel = if (obsidianOnly) "Obsidian-only: ON (tap for all apps)" else "Obsidian-only: OFF (tap to restrict)"
+
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(getString(R.string.overlay_service_notification_content_title))
             .setContentText(getString(R.string.overlay_service_notification_content))
             .setSmallIcon(R.drawable.rapid_draw)
             .addAction(NotificationCompat.Action.Builder(null, "Stop", pendingIntent).build())
+            .addAction(NotificationCompat.Action.Builder(null, toggleLabel, toggleObsidianOnlyIntent).build())
             .build()
 
         //noinspection InlinedApi (Seems to work, IDK why, maybe older Android versions might not support this)
@@ -164,6 +186,7 @@ class OverlayShowingService : Service(), BridgeServerListener {
                 touchHelper.openRawDrawing()
                 touchHelper.setStrokeWidth(STROKE_WIDTH).setLimitRect(bounds, listOf())
                 touchHelper.setRawInputReaderEnable(!touchHelper.isRawDrawingInputEnabled)
+                applyCaptureState() // applies Obsidian-only-mode's initial disabled state, if on
                 overlayPaintingView.addOnLayoutChangeListener(this)
             }
         })
@@ -185,29 +208,50 @@ class OverlayShowingService : Service(), BridgeServerListener {
 
     override fun onWritingModeChanged(state: WritingModeState) {
         writingMode = if (state.active) state else null
+        applyCaptureState()
+    }
 
-        // Scope raw capture to just the writing embed's region while a session is active,
-        // restoring full-screen capture when it isn't — same conversion used for outgoing
-        // points, just inverted (CSS px -> physical px) and without subtracting screenOrigin,
-        // since setLimitRect wants physical-screen-absolute coordinates, same space touchPoint.x/y
-        // already are.
-        //
-        // NOTE: an earlier version also toggled setRawInputReaderEnable(false/true) here, to
-        // disable capture entirely outside a writing embed (see COMPANION_APP_RESEARCH.md,
-        // "Scope raw capture to writing embeds only"). Reverted — it broke coordinate accuracy
-        // on-device (2026-09-14) in a way not yet diagnosed. Back to limit-rect-only scoping,
-        // which was the last confirmed-working state.
+    // Scope raw capture to just the writing embed's region while a session is active,
+    // restoring full-screen capture when it isn't. The coordinate conversion here is the
+    // same one used for outgoing points, just inverted (CSS px -> physical px) and without
+    // subtracting screenOrigin, since setLimitRect wants physical-screen-absolute
+    // coordinates, same space touchPoint.x/y already are.
+    //
+    // Whether an inactive session actually *disables* capture (vs. just widening back to
+    // full-screen) is opt-in via BridgePrefs — default off preserves the app's original,
+    // general-purpose behavior. This is the DEV build (see build.gradle.kts
+    // applicationIdSuffix) specifically so this can be tested without risking the stable
+    // install. See /COMPANION_APP_RESEARCH.md for the two prior attempts at this.
+    private fun applyCaptureState() {
         if (!::touchHelper.isInitialized) return
         val density = resources.displayMetrics.density.toDouble()
-        if (state.active) {
-            val left = ((state.screenOriginX + state.rectLeft) * density).toInt()
-            val top = ((state.screenOriginY + state.rectTop) * density).toInt()
-            val right = left + (state.rectWidth * density).toInt()
-            val bottom = top + (state.rectHeight * density).toInt()
+        val mode = writingMode
+
+        if (mode != null) {
+            val left = ((mode.screenOriginX + mode.rectLeft) * density).toInt()
+            val top = ((mode.screenOriginY + mode.rectTop) * density).toInt()
+            val right = left + (mode.rectWidth * density).toInt()
+            val bottom = top + (mode.rectHeight * density).toInt()
             touchHelper.setLimitRect(Rect(left, top, right, bottom), listOf())
+            setRawCaptureEnabled(true)
         } else {
             touchHelper.setLimitRect(fullScreenBounds, listOf())
+            setRawCaptureEnabled(!BridgePrefs.isObsidianOnlyMode(this))
         }
+    }
+
+    // Mirrors the reader's last-applied enabled state so setRawInputReaderEnable is only
+    // called on an actual transition, not on every onWritingModeChanged (which fires on
+    // every camera move and every pen-calibration event — i.e. repeatedly during a single
+    // active session). Calling it redundantly was a real bug found on 2026-09-14 — see
+    // /COMPANION_APP_RESEARCH.md — though even fixing it didn't fully resolve that session's
+    // testing, which is exactly why this now lives in an isolated dev-only install.
+    private var rawCaptureEnabled = true
+
+    private fun setRawCaptureEnabled(enabled: Boolean) {
+        if (rawCaptureEnabled == enabled) return
+        rawCaptureEnabled = enabled
+        touchHelper.setRawInputReaderEnable(enabled)
     }
 
     private fun forwardPointToBridge(touchPoint: TouchPoint?, phase: String) {

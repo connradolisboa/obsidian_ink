@@ -39,6 +39,15 @@ android {
     }
 
     buildTypes {
+        debug {
+            // Installs alongside the stable release build instead of replacing it — Android
+            // treats a different applicationId as a different app. Android Studio's Run
+            // button always builds "debug", so from here on it installs this experimental
+            // copy, leaving whatever's already on the device (under the base applicationId)
+            // untouched. See /COMPANION_APP_RESEARCH.md in the parent repo.
+            applicationIdSuffix = ".dev"
+            resValue("string", "app_name", "Boox Rapid Draw (Dev)")
+        }
         release {
             isMinifyEnabled = true
             proguardFiles(

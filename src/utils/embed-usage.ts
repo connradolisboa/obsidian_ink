@@ -35,6 +35,26 @@ export type InkEmbedUsage = {
 	count: number;
 };
 
+export type NoteInkEmbed = {
+	inkFile: TFile;
+	/** Human readable file type. i.e. 'writing', 'drawing', 'notebook' */
+	filetype: string;
+};
+
+export type NoteInkEmbedWithUsage = NoteInkEmbed & {
+	/** True if this ink file is also embedded in at least one other note. */
+	usedElsewhere: boolean;
+};
+
+const EMBED_KEY_FILETYPES: Record<string, string> = {
+	[WRITE_EMBED_KEY]: 'writing',
+	[LEGACY_WRITE_EMBED_KEY]: 'writing',
+	[DRAW_EMBED_KEY]: 'drawing',
+	[LEGACY_DRAW_EMBED_KEY]: 'drawing',
+	[NOTEBOOK_EMBED_KEY]: 'notebook',
+	[LEGACY_NOTEBOOK_EMBED_KEY]: 'notebook',
+};
+
 /**
  * Finds every ink embed code block in a markdown string that points at `inkFile`.
  * Blocks are returned in document order.
@@ -74,6 +94,64 @@ export function findInkEmbedBlocks(
 	}
 
 	return blocks;
+}
+
+/**
+ * Finds every distinct ink file embedded in a note's content, in first-seen order.
+ * Unlike `findInkEmbedBlocks`, this isn't scoped to one target file — it's used to see
+ * what a note embeds, rather than where one ink file is embedded.
+ */
+export function findInkEmbedsInNote(plugin: InkPlugin, content: string, notePath: string): NoteInkEmbed[] {
+	const blockRegex = new RegExp(
+		`^[ \\t]*\`\`\`(${ALL_EMBED_KEYS.join('|')})[ \\t]*\\r?\\n([\\s\\S]*?)\\r?\\n[ \\t]*\`\`\`[ \\t]*(?:\\r?\\n|$)`,
+		'gm',
+	);
+
+	const seenPaths = new Set<string>();
+	const embeds: NoteInkEmbed[] = [];
+	let match: RegExpExecArray | null;
+
+	while ((match = blockRegex.exec(content)) !== null) {
+		let embedData: { link?: string; filepath?: string };
+		try {
+			embedData = JSON.parse(match[2]);
+		} catch (err) {
+			continue;	// Malformed embed — leave it alone rather than guessing at it.
+		}
+
+		const inkFile = resolveInkFileFromEmbed(plugin, embedData, notePath);
+		if (!inkFile || seenPaths.has(inkFile.path)) continue;
+
+		seenPaths.add(inkFile.path);
+		embeds.push({ inkFile, filetype: EMBED_KEY_FILETYPES[match[1]] ?? 'drawing' });
+	}
+
+	return embeds;
+}
+
+/**
+ * Finds every ink file embedded in `noteFile`, along with whether each one is also
+ * embedded in some other note (and so shouldn't be deleted alongside this one).
+ */
+export async function findNoteInkEmbedsWithUsage(plugin: InkPlugin, noteFile: TFile): Promise<NoteInkEmbedWithUsage[]> {
+	let content: string;
+	try {
+		content = await plugin.app.vault.cachedRead(noteFile);
+	} catch (err) {
+		warn(err);
+		return [];
+	}
+
+	const embeds = findInkEmbedsInNote(plugin, content, noteFile.path);
+	if (!embeds.length) return [];
+
+	const results: NoteInkEmbedWithUsage[] = [];
+	for (const embed of embeds) {
+		const usages = await findInkEmbedUsages(plugin, embed.inkFile);
+		const usedElsewhere = usages.some(usage => usage.noteFile.path !== noteFile.path);
+		results.push({ ...embed, usedElsewhere });
+	}
+	return results;
 }
 
 /**
