@@ -21,6 +21,8 @@ import { getInkFileData } from 'src/utils/getInkFileData';
 import { verbose } from 'src/utils/log-to-console';
 import { isEreader } from 'src/utils/isEreader';
 import { EreaderDrawShapeUtil, setEreaderStreamline } from '../ereader-draw-shape-util';
+import { CompanionBridgeClient } from 'src/utils/companion-bridge';
+import { BridgeRect, BridgeStyle } from 'src/types/bridge-protocol';
 import { SecondaryMenuBar } from '../secondary-menu-bar/secondary-menu-bar';
 import ModifyMenu from '../modify-menu/modify-menu';
 import { ScrollButtons } from '../scroll-buttons/scroll-buttons';
@@ -81,6 +83,10 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 	const editorWrapperRefEl = useRef<HTMLDivElement>(null);
 	const { stashStaleContent, unstashStaleContent, getStashedShapes } = useStash(props.plugin);
 	const cameraLimitsRef = useRef<WritingCameraLimits>();
+	const bridgeClientRef = useRef<CompanionBridgeClient>();
+	// Where the viewport's (0,0) sits on the physical screen, in CSS px — {0,0} until a real pen
+	// event calibrates it. See "Coordinate calibration" in COMPANION_APP_RESEARCH.md.
+	const screenOriginRef = useRef<{ x: number, y: number }>({ x: 0, y: 0 });
 	const [preventTransitions, setPreventTransitions] = React.useState<boolean>(true);
 	// Tracks the lowest page-y reached by any draw shape's points. Used to skip
 	// resizeWritingTemplateInvitingly when the existing container still has room.
@@ -180,6 +186,15 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 				initWritingCamera(editor, MENUBAR_HEIGHT_PX);
 				cameraLimitsRef.current = initWritingCameraLimits(editor);
 			}
+
+			// Companion bridge (experimental) — gated only by its own setting (not isEreader())
+			// so it can be exercised on desktop against a mock server during development.
+			// Start the session only after the camera has settled, since the rect sent below
+			// has to match it.
+			if(props.plugin.settings.companionBridgeEnabled) {
+				const client = bridgeClientRef.current = new CompanionBridgeClient(editor, props.plugin.settings.companionBridgePort);
+				client.startSession(getBridgeRect(editor), getBridgeStyle(), screenOriginRef.current);
+			}
 		});
 
 		// Runs on any USER caused change to the store, (Anything wrapped in silently change method doesn't call this).
@@ -195,6 +210,7 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 				case Activity.CameraMovedManually:
 					if(cameraLimitsRef.current) restrictWritingCamera(editor, cameraLimitsRef.current);
 					unstashStaleContent(editor);
+					bridgeClientRef.current?.updateRect(getBridgeRect(editor), getBridgeStyle(), screenOriginRef.current);
 					break;
 
 				case Activity.DrawingStarted:
@@ -259,11 +275,32 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 		const tlCanvas = editorWrapperRefEl.current?.querySelector('.tl-canvas') as HTMLElement;
 		if (tlCanvas) tlCanvas.addEventListener('keydown', handleKeyDown);
 
+		// Companion bridge calibration — a real pen PointerEvent's screenX/clientX delta is the
+		// only way to learn where the viewport sits on the physical screen (see the research doc).
+		// Recalibrates on every real pen contact in case layout shifts (e.g. on-screen keyboard).
+		// The session already started with an uncalibrated {0,0} origin (no real pen event has
+		// happened yet at that point) — critically, the corrected value has to be explicitly
+		// resent here, or the companion app keeps using {0,0} for the rest of the session, since
+		// nothing else re-sends setWritingMode unless the camera also happens to move.
+		const handlePenCalibration = (e: PointerEvent) => {
+			if (e.pointerType !== 'pen') return;
+			screenOriginRef.current = { x: e.screenX - e.clientX, y: e.screenY - e.clientY };
+			bridgeClientRef.current?.updateRect(getBridgeRect(editor), getBridgeStyle(), screenOriginRef.current);
+		};
+		if (props.plugin.settings.companionBridgeEnabled && tlCanvas) {
+			tlCanvas.addEventListener('pointerdown', handlePenCalibration);
+		}
+
 		const unmountActions = () => {
 			// NOTE: This prevents the postProcessTimer completing when a new file is open and saving over that file.
 			resetInputPostProcessTimers();
 			removeUserActionListener();
-			if (tlCanvas) tlCanvas.removeEventListener('keydown', handleKeyDown);
+			if (tlCanvas) {
+				tlCanvas.removeEventListener('keydown', handleKeyDown);
+				tlCanvas.removeEventListener('pointerdown', handlePenCalibration);
+			}
+			bridgeClientRef.current?.endSession();
+			bridgeClientRef.current = undefined;
 		}
 
 		if(props.saveControlsReference) {
@@ -288,6 +325,20 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 	}
 
 	///////////////
+
+	// Companion bridge helpers — see COMPANION_APP_RESEARCH.md. getViewportScreenBounds()
+	// is in the same coordinate space (viewport CSS px) as the clientX/clientY tldraw's own
+	// getPointerInfo() reads off real PointerEvents, so this rect and the points fed into
+	// dispatch() via CompanionBridgeClient are expected to line up in that same space.
+	function getBridgeRect(editor: Editor): BridgeRect {
+		const bounds = editor.getViewportScreenBounds();
+		return { left: bounds.x, top: bounds.y, width: bounds.w, height: bounds.h };
+	}
+
+	function getBridgeStyle(): BridgeStyle {
+		// TODO: pull from the editor's current stroke style/theme once this leaves the spike stage.
+		return { color: '#000000', width: 2 };
+	}
 
 	function resizeContainerIfEmbed (editor: Editor) {
 		if (!props.embedded || !props.onResize) return;

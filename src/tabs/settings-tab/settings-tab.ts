@@ -437,6 +437,14 @@ function insertWritingSettings(containerEl: HTMLElement, plugin: InkPlugin, refr
 		refresh();
 	}
 
+	const saveCompanionBridgePort = async (enteredValue: string) => {
+		const parsed = parseInt(enteredValue);
+		const value = isNaN(parsed) ? DEFAULT_SETTINGS.companionBridgePort : Math.min(65535, Math.max(1024, parsed));
+		plugin.settings.companionBridgePort = value;
+		await plugin.saveSettings();
+		refresh();
+	}
+
 	const sectionEl = containerEl.createDiv('inkc_section inkc_controls-section');
 	sectionEl.createEl('h2', { text: 'Writing' });
 	sectionEl.createEl('p', { text: `While editing a Markdown file, run the action 'Insert new handwriting section' to embed a section for writing with a stylus.` });
@@ -490,6 +498,37 @@ function insertWritingSettings(containerEl: HTMLElement, plugin: InkPlugin, refr
 				await plugin.saveSettings();
 			});
 		});
+
+	new Setting(sectionEl)
+		.setClass('inkc_setting')
+		.setName('Companion bridge (experimental)')
+		.setDesc('Connects to a companion app (or test server) over a local WebSocket and feeds its raw stylus points directly into the writing canvas, instead of relying on touch/pointer events from the WebView. See COMPANION_APP_RESEARCH.md.')
+		.addToggle((toggle) => {
+			toggle.setValue(plugin.settings.companionBridgeEnabled);
+			toggle.onChange(async (value: boolean) => {
+				plugin.settings.companionBridgeEnabled = value;
+				await plugin.saveSettings();
+				refresh();
+			});
+		});
+
+	if(plugin.settings.companionBridgeEnabled) {
+		const portSettingEl = new Setting(sectionEl)
+			.setClass('inkc_setting')
+			.setName('Companion bridge port')
+			.setDesc('The local port the companion app / test server is listening on (ws://127.0.0.1:<port>).')
+			.addText((textItem) => {
+				textItem.setValue(plugin.settings.companionBridgePort.toString());
+				textItem.setPlaceholder(DEFAULT_SETTINGS.companionBridgePort.toString());
+				textItem.inputEl.addEventListener('blur', async (ev: FocusEvent) => {
+					saveCompanionBridgePort(textItem.getValue())
+				})
+				textItem.inputEl.addEventListener('keypress', async (ev: KeyboardEvent) => {
+					if(ev.key === 'Enter') saveCompanionBridgePort(textItem.getValue())
+				})
+			});
+		portSettingEl.settingEl.classList.add('inkc_input-medium');
+	}
 
 	new Setting(sectionEl)
 		.setClass('inkc_setting')
