@@ -33,12 +33,19 @@ import com.onyx.android.sdk.pen.data.TouchPointList
 private const val CHANNEL_ID = "rapid_draw_channel_overlay_01"
 private const val STROKE_WIDTH = 3.0f
 
-class OverlayShowingService : Service() {
+private const val BRIDGE_PORT = 8765
+
+class OverlayShowingService : Service(), BridgeServerListener {
     private val paint = Paint()
 
     private lateinit var touchHelper: TouchHelper
     private lateinit var wm: WindowManager
     private lateinit var overlayPaintingView: SurfaceView
+    private lateinit var fullScreenBounds: Rect
+
+    // Obsidian-plugin companion bridge. See /COMPANION_APP_RESEARCH.md in the parent repo.
+    private var bridgeServer: BridgeServer? = null
+    private var writingMode: WritingModeState? = null
 
     override fun onBind(intent: Intent) = null
 
@@ -53,6 +60,8 @@ class OverlayShowingService : Service() {
 
         initPaint()
         initSurfaceView()
+
+        bridgeServer = BridgeServer(BRIDGE_PORT, this).also { it.start() }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -116,6 +125,7 @@ class OverlayShowingService : Service() {
         //        TODO actual bottom place is calculated incorrectly due to the status bar...
         val displayMetrics = resources.displayMetrics
         val bounds = Rect(0, 0, displayMetrics.widthPixels, displayMetrics.heightPixels)
+        fullScreenBounds = bounds
 
         topLeftParams.x = bounds.left
         topLeftParams.y = bounds.top
@@ -165,14 +175,72 @@ class OverlayShowingService : Service() {
         super.onDestroy()
         wm.removeViewImmediate(overlayPaintingView)
         touchHelper.closeRawDrawing()
+        bridgeServer?.stop()
+        bridgeServer = null
     }
 
+    ////////
+    //////// Obsidian-plugin companion bridge. See /COMPANION_APP_RESEARCH.md in the parent repo.
+    ////////
+
+    override fun onWritingModeChanged(state: WritingModeState) {
+        writingMode = if (state.active) state else null
+
+        // Scope raw capture to just the writing embed's region while a session is active,
+        // restoring full-screen capture when it isn't — same conversion used for outgoing
+        // points, just inverted (CSS px -> physical px) and without subtracting screenOrigin,
+        // since setLimitRect wants physical-screen-absolute coordinates, same space touchPoint.x/y
+        // already are.
+        //
+        // NOTE: an earlier version also toggled setRawInputReaderEnable(false/true) here, to
+        // disable capture entirely outside a writing embed (see COMPANION_APP_RESEARCH.md,
+        // "Scope raw capture to writing embeds only"). Reverted — it broke coordinate accuracy
+        // on-device (2026-09-14) in a way not yet diagnosed. Back to limit-rect-only scoping,
+        // which was the last confirmed-working state.
+        if (!::touchHelper.isInitialized) return
+        val density = resources.displayMetrics.density.toDouble()
+        if (state.active) {
+            val left = ((state.screenOriginX + state.rectLeft) * density).toInt()
+            val top = ((state.screenOriginY + state.rectTop) * density).toInt()
+            val right = left + (state.rectWidth * density).toInt()
+            val bottom = top + (state.rectHeight * density).toInt()
+            touchHelper.setLimitRect(Rect(left, top, right, bottom), listOf())
+        } else {
+            touchHelper.setLimitRect(fullScreenBounds, listOf())
+        }
+    }
+
+    private fun forwardPointToBridge(touchPoint: TouchPoint?, phase: String) {
+        val mode = writingMode ?: return
+        val point = touchPoint ?: return
+        val density = resources.displayMetrics.density.toDouble()
+        val cssX = point.x.toDouble() / density - mode.screenOriginX
+        val cssY = point.y.toDouble() / density - mode.screenOriginY
+        bridgeServer?.sendStrokePoint(
+            sessionId = mode.sessionId,
+            canvasId = mode.canvasId,
+            x = cssX,
+            y = cssY,
+            pressure = point.pressure.toDouble(),
+            phase = phase,
+            t = point.timestamp.toLong(),
+        )
+    }
+
+    ////////
+
     private val callback: RawInputCallback = object : RawInputCallback() {
-        override fun onBeginRawDrawing(b: Boolean, touchPoint: TouchPoint?) {}
+        override fun onBeginRawDrawing(b: Boolean, touchPoint: TouchPoint?) {
+            forwardPointToBridge(touchPoint, "down")
+        }
 
-        override fun onEndRawDrawing(b: Boolean, touchPoint: TouchPoint?) {}
+        override fun onEndRawDrawing(b: Boolean, touchPoint: TouchPoint?) {
+            forwardPointToBridge(touchPoint, "up")
+        }
 
-        override fun onRawDrawingTouchPointMoveReceived(touchPoint: TouchPoint?) {}
+        override fun onRawDrawingTouchPointMoveReceived(touchPoint: TouchPoint?) {
+            forwardPointToBridge(touchPoint, "move")
+        }
 
         override fun onPenActive(point: TouchPoint?) {
             touchHelper.setRawDrawingEnabled(true)

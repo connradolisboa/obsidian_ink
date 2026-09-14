@@ -75,4 +75,8 @@ dependencies {
     implementation(libs.androidx.window)
     implementation(libs.bundles.onyx)
     implementation(libs.hiddenapibypass)
+
+    // Obsidian-plugin companion bridge — embedded loopback WebSocket server.
+    // See /COMPANION_APP_RESEARCH.md in the parent repo.
+    implementation("org.java-websocket:Java-WebSocket:1.5.6")
 }
