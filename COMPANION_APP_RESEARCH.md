@@ -216,6 +216,151 @@ That same reference code revealed a real problem: it explicitly tags its point d
 - Kotlin converts *before* sending, not after: `cssX = touchPoint.x / density - screenOrigin.x` (same for y), so the `strokePoints` messages it emits land in exactly the coordinate space `companion-bridge.ts` and the mock server already use — **zero changes needed to already-verified TS code** for this. The conversion math is new Kotlin-only surface area, isolated from everything already proven to work.
 - Bonus: the same `screenOrigin` + `rect` + `density` lets Kotlin properly scope `touchHelper.setLimitRect(...)` to just the writing embed's region instead of the whole screen — the existing file has a literal `// TODO actual bottom place is calculated incorrectly due to the status bar...` comment marking this as already a known unsolved problem in upstream boox-rapid-draw, not something this introduces.
 
+## Root cause of the deformed/doubled strokes (found 2026-09-18)
+
+**Symptom, as reported:** with the Rapid Draw overlay on *and* the companion bridge on, strokes come
+out "deformed, double... a mess after it refreshes and sends the input to actually write."
+
+**Cause — two input sources feeding one tldraw editor.** The overlay window is created with
+`FLAG_NOT_TOUCHABLE`, so it never consumes touch: the pen reaches Obsidian's WebView as a normal
+`PointerEvent` *while* the Onyx raw reader is capturing that same physical stroke and forwarding it
+over the bridge. tldraw therefore receives one stroke twice — once from the real pointer id, once
+from the bridge's synthetic `pointerId: 9001` — sampled at different rates and interleaved into a
+single deformed stroke. Nothing in the plugin ever suppressed the native path; `stylusOnlyInput`
+blocks *touch*, not pen. The overlay's own instant ink hides the mess until `setPenUpRefreshTimeMs`
+(1000ms) clears it, which is exactly why it only shows up "after it refreshes."
+
+This was never named in the earlier sessions. It is a better fit for the original
+"writes, but lands wrong / deformed" reports than any of the `setRawInputReaderEnable` theories,
+and it is consistent with the observation that turning the bridge *off* made things fine.
+
+### Fix applied (plugin)
+
+- `companion-bridge.ts` — new `isLive()`: session active **and** socket `OPEN`.
+- `tldraw-writing-editor.tsx` — `handlePenCalibration` replaced by `handleBridgePointer`, registered
+  capture-phase on `.tl-canvas` for `pointerdown/move/up/cancel`. While `isLive()`, pen events are
+  `preventDefault()` + `stopPropagation()`'d so the bridge is the sole input source. (Same technique
+  the existing `blockTouch` in `tldraw-helpers.ts` already uses for touch, so it is known to work on
+  this tldraw version.)
+- **Calibration now runs on any pointer type, not just pen** — it had to, since the pen events it
+  used to read are the ones now being swallowed. Palm/finger contacts give the same
+  `screenX - clientX` answer.
+- **Fails open by design:** gated on `isLive()`, so with the companion app closed or crashed
+  mid-session nothing is suppressed and normal pen writing continues. You cannot get locked out.
+
+### Fix applied (companion app, dev build only — stable install untouched)
+
+- `buildFeatures { buildConfig = true }` + `buildConfigField("int", "BRIDGE_PORT", ...)`:
+  **debug = 8766, release = 8765.** The two installs can no longer contend for one socket. Set the
+  plugin's "Companion bridge port" to **8766** when testing the dev build.
+- `tile_label` as a per-build-type `resValue`, manifest uses `@string/tile_label` — the dev tile now
+  reads "Rapid Draw (Dev)". Both tiles previously read "Rapid Draw" and were indistinguishable in
+  the quick-settings panel, so there was no way to know which app you were toggling.
+- `BridgeServerListener.onBridgeServerError` → `Toast`. `WebSocketServer` reports a failed bind
+  through `onError`, which previously only logged: the service kept running with a dead server while
+  the plugin talked to whichever install had grabbed the port. This is the concrete mechanism behind
+  the port-collision theory recorded on 2026-09-14, and it was still unfixed until now.
+
+### Device audit, 2026-09-18 (measured, not assumed)
+
+| | |
+|---|---|
+| `com.sergeylappo.booxrapiddraw` | debug build, Sep 14 16:13. Has `BridgeServer`, **no** `BridgePrefs` → this is `bccf0b6` code. |
+| `com.sergeylappo.booxrapiddraw.dev` | debug build, Sep 14 16:40. Has `BridgeServer` + `BridgePrefs` → `5d4815c`. |
+| Both | bound the same port 8765; both QS tiles labelled "Rapid Draw". |
+| At audit time | no `OverlayShowingService` running in either app; nothing listening on 8765. |
+| Device | 1860x2480, density 300 → **dpr 1.875**. |
+| Vault | `ink-custom` had `companionBridgeEnabled: false`; upstream `ink` plugin also installed alongside the fork. |
+
+### Verification status
+
+- **TypeScript typechecks clean.**
+- **The Kotlin compiles.** The Android SDK is now present at `~/Library/Android/sdk` (it was absent
+  in the earlier sessions, which is why Phase 1 was written but never compiled). `:app:assembleDebug`
+  succeeds — the first time the bridge Kotlin has been through a compiler.
+- Dev APK installed; both apps force-stopped afterwards per the standing operational note.
+- **Not verified with a real pen on hardware.** That is the next step.
+
+### Confirmed fixed on device (2026-09-18)
+
+**Deformed/doubled strokes: gone.** The dual-input diagnosis was correct.
+
+**A ~0.5cm upward offset surfaced immediately afterwards** — and it was not a regression. It had
+been there all along, masked: the native stroke (which lands correctly) was drawn on top of the
+bridge stroke (which landed high), so the pair read as "deformed" rather than "offset". Suppressing
+the native path left the bridge's own coordinate error visible on its own.
+
+Two assumptions in the Kotlin conversion were fixed, both of which shift strokes upward when wrong:
+
+1. **The overlay window's top-left is not necessarily the screen's top-left.** Onyx raw TouchPoints
+   are host-view-local while `screenOrigin` is screen-absolute; the old code bridged the two by
+   assuming the overlay sits at (0,0). Now uses `getLocationOnScreen()` — a no-op at the origin,
+   correct when the window is inset. `setLimitRect` gets the same correction in reverse, since it
+   takes view-local coordinates (the original code fed it `getLocalVisibleRect` output), meaning the
+   capture region had been shifted by the same amount too. **This was the ~0.5cm.** It also finally
+   closes the `// TODO actual bottom place is calculated incorrectly due to the status bar...` that
+   upstream boox-rapid-draw has carried all along.
+2. **`displayMetrics.density` is not the WebView's `devicePixelRatio`.** `devicePixelRatio` is
+   deviceScaleFactor x page zoom, so Obsidian's zoom can diverge from the 1.875 density here. The
+   plugin now sends its real `devicePixelRatio` in `setWritingMode` and Kotlin prefers it, falling
+   back to density when absent. Unlike #1 this error is proportional, growing with distance from the
+   viewport origin — worth remembering if a *scaling* (rather than shifting) symptom ever appears.
+
+A one-line-per-stroke diagnostic log (`adb logcat -s RapidDrawOverlay`) now dumps every number in
+the conversion at pen-down: raw point, view origin, dpr, density, screenOrigin and resulting CSS
+point. Cheap, and it turns "it lands wrong" into arithmetic.
+
+### Build layout as of 2026-09-18 — dev promoted to definitive
+
+| Variant | applicationId | Port | Tile | Role |
+|---|---|---|---|---|
+| `release` | `com.sergeylappo.booxrapiddraw` | 8765 | "Rapid Draw" | **Definitive daily driver** |
+| `debug` | `...booxrapiddraw.dev` | 8766 | "Rapid Draw (Dev)" | Sandbox for future iteration |
+
+The old stable install was a stale `bccf0b6` debug build; it has been replaced in place by a release
+build of current code. The `.dev` sandbox is deliberately kept — the two-install split is what made
+this session's work safe, and collapsing to one app would throw that away the moment the next risky
+change comes along. Android Studio's Run button still targets `.dev`, so the daily driver can only be
+updated deliberately:
+
+```
+./gradlew :app:assembleRelease && adb install -r app/build/outputs/apk/release/app-release.apk
+```
+
+Two notes on that release variant. It is **signed with the debug keystore** (no release keystore
+exists, and it has to install over the previous debug-signed package without an uninstall) — fine for
+personal sideloading, not for distribution. And **minification is off**: the release variant had
+never been built before, and this app is hostile to R8 — the Onyx SDK is reflection-heavy,
+Java-WebSocket resolves handlers reflectively, and HiddenApiBypass exists specifically to defeat
+static analysis. An untested R8 config is not worth trading a working daily driver for.
+
+Still run only one of the two overlay services at a time. They no longer contend for a port, and a
+failed bind now toasts, but two raw-capture services over one screen region is still nonsense.
+
+### Still open after this session
+
+(Items 1-3 below were written before the 2026-09-18 fixes above; #3 is now resolved and kept only
+for the reasoning. The rest stand.)
+
+1. **`strokeDrawn` is dropped on the floor.** `BridgeServer.onMessage` early-returns on anything that
+   isn't `setWritingMode`, so the ack does nothing and the overlay clears on a blind 1s timer rather
+   than when tldraw has actually rendered. This is Phase 5 and it is the remaining half of the
+   single-source-of-truth design — today the overlay still paints its own ink.
+2. **`updateRect` never fires on scroll.** It is wired to tldraw camera activity and pen calibration
+   only. Scrolling the markdown note moves the embed while the limit rect stays put, silently
+   drifting the capture region off the embed. Needs a scroll/resize/IntersectionObserver path.
+3. **Kotlin assumes `displayMetrics.density` == the WebView's `devicePixelRatio`.** Obsidian mobile
+   has its own zoom setting; if they diverge you get scale drift that grows with distance from the
+   origin. Cheap fix: send `devicePixelRatio` in `setWritingMode` instead of trusting the Kotlin side.
+4. **First-stroke calibration race** (recorded 2026-09-14) is unchanged — the origin from the
+   previous stroke carries over, so only the very first stroke of a fresh session can be off.
+5. **Design decision not yet made:** overlay-paints-then-hands-off (keeps the instant e-ink feel,
+   requires #1) vs. tldraw-paints-only (`isRawDrawingRenderEnabled = false` while a session is
+   active — no mismatch possible, but loses the instant feel and leaves the companion app doing
+   little beyond raising the sample rate). Current recommendation: the former.
+
+---
+
 ## Open decisions for next session
 - Confirm Phase 0 spike result before investing further.
 - Decide whether to literally fork `boox-rapid-draw`'s repo or write a fresh minimal overlay app referencing its approach (fork is less work, inherits its existing issues too).
