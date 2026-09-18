@@ -275,20 +275,41 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 		const tlCanvas = editorWrapperRefEl.current?.querySelector('.tl-canvas') as HTMLElement;
 		if (tlCanvas) tlCanvas.addEventListener('keydown', handleKeyDown);
 
-		// Companion bridge calibration — a real pen PointerEvent's screenX/clientX delta is the
-		// only way to learn where the viewport sits on the physical screen (see the research doc).
-		// Recalibrates on every real pen contact in case layout shifts (e.g. on-screen keyboard).
-		// The session already started with an uncalibrated {0,0} origin (no real pen event has
-		// happened yet at that point) — critically, the corrected value has to be explicitly
-		// resent here, or the companion app keeps using {0,0} for the rest of the session, since
-		// nothing else re-sends setWritingMode unless the camera also happens to move.
-		const handlePenCalibration = (e: PointerEvent) => {
+		// Companion bridge input ownership + calibration.
+		//
+		// Calibration: a PointerEvent's screenX/clientX delta is the only way to learn where the
+		// viewport sits on the physical screen (see the research doc). Any pointer type gives the
+		// same answer, so palm and finger contacts calibrate too — which matters now that pen
+		// events get swallowed below. The corrected origin has to be explicitly resent, or the
+		// companion app keeps using {0,0} for the rest of the session, since nothing else re-sends
+		// setWritingMode unless the camera also happens to move.
+		//
+		// Ownership: while the companion app is actually connected it is the *sole* input source.
+		// Its overlay window is FLAG_NOT_TOUCHABLE, so the WebView still receives its own pen
+		// PointerEvents for the very same physical stroke the Onyx raw reader is forwarding over
+		// the bridge. Letting both through makes tldraw build one stroke out of two pointer ids
+		// sampled at different rates, interleaved — the "deformed / doubled" stroke seen on-device.
+		// Gated on isLive() so this fails safe: with the companion app closed (or crashed
+		// mid-session) nothing is suppressed and normal pen writing carries on.
+		const handleBridgePointer = (e: PointerEvent) => {
+			const client = bridgeClientRef.current;
+			if (!client) return;
+
+			if (e.type === 'pointerdown') {
+				screenOriginRef.current = { x: e.screenX - e.clientX, y: e.screenY - e.clientY };
+				client.updateRect(getBridgeRect(editor), getBridgeStyle(), screenOriginRef.current);
+			}
+
 			if (e.pointerType !== 'pen') return;
-			screenOriginRef.current = { x: e.screenX - e.clientX, y: e.screenY - e.clientY };
-			bridgeClientRef.current?.updateRect(getBridgeRect(editor), getBridgeStyle(), screenOriginRef.current);
+			if (!client.isLive()) return;
+			e.preventDefault();
+			e.stopPropagation();
 		};
+		const bridgePointerEventNames = ['pointerdown', 'pointermove', 'pointerup', 'pointercancel'];
 		if (props.plugin.settings.companionBridgeEnabled && tlCanvas) {
-			tlCanvas.addEventListener('pointerdown', handlePenCalibration);
+			for (const name of bridgePointerEventNames) {
+				tlCanvas.addEventListener(name, handleBridgePointer as EventListener, { capture: true });
+			}
 		}
 
 		const unmountActions = () => {
@@ -297,7 +318,9 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 			removeUserActionListener();
 			if (tlCanvas) {
 				tlCanvas.removeEventListener('keydown', handleKeyDown);
-				tlCanvas.removeEventListener('pointerdown', handlePenCalibration);
+				for (const name of bridgePointerEventNames) {
+					tlCanvas.removeEventListener(name, handleBridgePointer as EventListener, { capture: true });
+				}
 			}
 			bridgeClientRef.current?.endSession();
 			bridgeClientRef.current = undefined;

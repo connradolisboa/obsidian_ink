@@ -76,6 +76,13 @@ export class CompanionBridgeClient {
 		}
 	}
 
+	// True only while a session is active *and* the companion app is actually connected.
+	// The native pen path is suppressed on this signal, so it has to fail safe: if the companion
+	// app isn't running (or dies mid-session), this goes false and normal WebView pen input works.
+	isLive(): boolean {
+		return this.active && this.socket?.readyState === WebSocket.OPEN;
+	}
+
 	////////
 
 	private connect() {
@@ -122,6 +129,7 @@ export class CompanionBridgeClient {
 			type: 'setWritingMode',
 			sessionId: this.sessionId,
 			canvasId: this.canvasId,
+			devicePixelRatio: window.devicePixelRatio,
 			...this.pendingMode,
 		};
 		this.socket.send(JSON.stringify(msg));

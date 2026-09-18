@@ -31,6 +31,12 @@ export interface SetWritingModeMessage {
 	// and every point in StrokePointsMessage are already in. {0,0} means "not yet calibrated"
 	// (e.g. desktop/mock testing, where points are already fabricated in the right space).
 	screenOrigin: { x: number, y: number },
+	// The WebView's own physical-px -> CSS-px ratio. Kotlin used to assume its
+	// resources.displayMetrics.density matched this, but devicePixelRatio is deviceScaleFactor *
+	// page zoom, so Obsidian's zoom setting can make them diverge — and any divergence shows up as
+	// a scale error that grows with distance from the viewport origin. Authoritative here, because
+	// clientX/clientY (what tldraw reads) are defined in exactly these units.
+	devicePixelRatio: number,
 }
 
 export interface BridgeStrokePoint {
