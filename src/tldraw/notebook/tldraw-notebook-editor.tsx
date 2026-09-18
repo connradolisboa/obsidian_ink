@@ -35,6 +35,7 @@ interface TldrawNotebookEditorProps {
 	notebookFile: TFile,
 	save: (inkFileData: InkFileData) => void,
 	extendedMenu?: any[],
+	onOpenClick?: () => void,
 	initialPage?: number,
 
 	// For embeds
@@ -428,6 +429,7 @@ export function TldrawNotebookEditor(props: TldrawNotebookEditorProps) {
 						onLockClick = { async () => {
 							if(props.closeEditor) props.closeEditor();
 						}}
+						onOpenClick = {props.onOpenClick}
 						menuOptions = {[
 							...(props.extendedMenu || []),
 							{

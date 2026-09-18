@@ -1,5 +1,5 @@
 import './tldraw-drawing-editor.scss';
-import { DefaultDashStyle, DrawShapeUtil, Editor, HistoryEntry, StoreSnapshot, TLRecord, TLStoreSnapshot, TLUiOverrides, Tldraw, TldrawEditor, TldrawHandles, TldrawOptions, TldrawScribble, TldrawSelectionBackground, TldrawSelectionForeground, TldrawShapeIndicators, defaultShapeTools, defaultShapeUtils, defaultTools, getSnapshot, TLSerializedStore, TLEditorSnapshot, TLUiActionsContextType } from "@tldraw/tldraw";
+import { DefaultDashStyle, DrawShapeUtil, Editor, HistoryEntry, StoreSnapshot, TLRecord, TLStoreSnapshot, TLUiOverrides, Tldraw, TldrawEditor, TldrawHandles, TldrawOptions, TldrawScribble, TldrawSelectionBackground, TldrawSelectionForeground, TldrawShapeIndicators, defaultShapeTools, defaultShapeUtils, defaultTools, getSnapshot, TLSerializedStore, TLEditorSnapshot, TLUiActionsContextType, Box } from "@tldraw/tldraw";
 import { useRef } from "react";
 import { Activity, adaptTldrawToObsidianThemeMode, focusChildTldrawEditor, getActivityType, getDrawingSvg, initDrawingCamera, prepareDrawingSnapshot, preventTldrawCanvasesCausingObsidianGestures } from "../../utils/tldraw-helpers";
 import InkPlugin from "../../main";
@@ -34,6 +34,10 @@ interface TldrawDrawingEditorProps {
 	drawingFile: TFile,
 	save: (pageData: InkFileData) => void,
 	extendedMenu?: any[]
+	onOpenClick?: () => void,
+	// The region of the drawing this embed shows, in page coordinates. See DrawingEmbedData.frame.
+	frame?: { x: number, y: number, w: number, h: number },
+	onSaveFrame?: (frame: { x: number, y: number, w: number, h: number }) => void,
 	onExitFocusMode?: () => void,
 
 	// For embeds
@@ -138,7 +142,13 @@ export function TldrawDrawingEditor(props: TldrawDrawingEditorProps) {
 		})
 		
 		// view setup
-		initDrawingCamera(editor);
+		// A saved frame wins over fit-to-drawing — that's the whole point of saving one, and it has
+		// to be applied before the editor becomes visible or the embed visibly jumps.
+		if (props.frame) {
+			editor.zoomToBounds(new Box(props.frame.x, props.frame.y, props.frame.w, props.frame.h));
+		} else {
+			initDrawingCamera(editor);
+		}
 		if (props.embedded) {
 			editor.setCameraOptions({
 				isLocked: true,
@@ -314,11 +324,18 @@ export function TldrawDrawingEditor(props: TldrawDrawingEditorProps) {
 			previewUri = svgObj.svg;//await svgToPngDataUri(svgObj)
 			// if(previewUri) addDataURIImage(previewUri)	// NOTE: Option for testing
 		}
-		
+
+		// Captured alongside the SVG so per-embed frames have a coordinate space to map onto later.
+		const pageBounds = editor.getCurrentPageBounds();
+		const previewBounds = pageBounds
+			? { x: pageBounds.x, y: pageBounds.y, w: pageBounds.w, h: pageBounds.h }
+			: undefined;
+
 		if(previewUri) {
 			const pageData = buildDrawingFileData({
 				tlEditorSnapshot,
 				previewUri,
+				previewBounds,
 			})
 			props.save(pageData);
 			// savePngExport(props.plugin, previewUri, props.fileRef)
@@ -398,6 +415,13 @@ export function TldrawDrawingEditor(props: TldrawDrawingEditorProps) {
 							// TODO: Save immediately incase it hasn't been saved yet?
 							if(props.closeEditor) props.closeEditor();
 						}}
+						onOpenClick = {props.onOpenClick}
+						onSaveFrameClick = {props.onSaveFrame && (() => {
+							const tlEditor = getTlEditor();
+							if (!tlEditor) return;
+							const bounds = tlEditor.getViewportPageBounds();
+							props.onSaveFrame?.({ x: bounds.x, y: bounds.y, w: bounds.w, h: bounds.h });
+						})}
 						menuOptions = {customExtendedMenu}
 					/>
 				)}

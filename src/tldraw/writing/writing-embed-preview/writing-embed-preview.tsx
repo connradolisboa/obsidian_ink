@@ -23,6 +23,8 @@ interface WritingEmbedPreviewProps {
     onClick: React.MouseEventHandler,
     onCollapseClick?: () => void,
     onFullscreenClick?: () => void,
+    /** Renders the writing smaller within the embed. See WritingEmbedData.scale. */
+    scale?: number,
 }
 
 // Wraps the component so that it can full unmount when inactive
@@ -65,7 +67,9 @@ const WritingEmbedPreview: React.FC<WritingEmbedPreviewProps> = (props) => {
             ])}
             style={{
                 position: 'absolute',
-                width: '100%',
+                // Narrowing the preview shrinks it proportionally, and the measured height that
+                // drives the container's size shrinks with it - which is the point of scaling.
+                width: `${Math.max(0.1, Math.min(1, props.scale ?? 1)) * 100}%`,
             }}
             onClick={(e) => { e.stopPropagation(); props.onClick(e); }}
             onMouseDown={(e) => e.stopPropagation()}

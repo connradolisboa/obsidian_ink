@@ -15,7 +15,8 @@ import { DrawingEmbedData } from "src/utils/embed";
 import { embedShouldActivateImmediately } from "src/utils/storage";
 import classNames from "classnames";
 import { atom, useAtom, useSetAtom } from "jotai";
-import { DRAWING_INITIAL_WIDTH, DRAWING_INITIAL_ASPECT_RATIO } from "src/constants";
+import { DRAWING_INITIAL_WIDTH, DRAWING_INITIAL_ASPECT_RATIO, DRAW_EMBED_KEY } from "src/constants";
+import { copyEmbedToClipboard } from "src/utils/embed-clipboard";
 import { getFullPageWidth } from "src/utils/getFullPageWidth";
 import { verbose } from "src/utils/log-to-console";
 import { CollapseIcon } from "src/graphics/icons/collapse-icon";
@@ -62,6 +63,7 @@ export function DrawingEmbed (props: {
 	width?: number,
 	aspectRatio?: number,
 	onCollapsedChange?: (collapsed: boolean) => void,
+	onFrameChange?: (frame: { x: number, y: number, w: number, h: number } | undefined) => void,
 	onTitleChange?: (title: string) => void,
 }) {
 	const embedContainerElRef = useRef<HTMLDivElement>(null);
@@ -114,13 +116,24 @@ export function DrawingEmbed (props: {
 			}
 		},
 		{
-			text: 'Open drawing',
-			icon: 'maximize',
+			text: 'Copy embed',
+			icon: 'clipboard-copy',
 			section: 'inkc-file',
 			action: async () => {
-				openInkFile(props.plugin, props.drawingFileRef)
+				if (!props.embedData) return;
+				// Copies the embed itself, not the file — pasting then asks whether it should point
+				// at the same ink file or a copy of it. See src/utils/embed-clipboard.ts.
+				await copyEmbedToClipboard(DRAW_EMBED_KEY, props.embedData);
 			}
 		},
+		...(props.embedData?.frame ? [{
+			text: 'Reset framing',
+			icon: 'maximize-2',
+			section: 'inkc-file',
+			action: () => {
+				props.onFrameChange?.(undefined);
+			},
+		}] : []),
 		{
 			text: 'Remove embed',
 			icon: 'trash-2',
@@ -237,6 +250,7 @@ export function DrawingEmbed (props: {
 						onClick = { async () => {
 							switchToEditMode();
 						}}
+						frame = {props.embedData?.frame}
 					/>
 
 					<TldrawDrawingEditorWrapper
@@ -247,6 +261,13 @@ export function DrawingEmbed (props: {
 						embedded
 						saveControlsReference = {registerEditorControls}
 						closeEditor = {saveAndSwitchToPreviewMode}
+						onOpenClick = {() => openInkFile(
+							props.plugin,
+							props.drawingFileRef,
+							props.plugin.settings.closeNoteOnFullscreen ? props.plugin.app.workspace.activeLeaf : null
+						)}
+						frame = {props.embedData?.frame}
+						onSaveFrame = {props.onFrameChange && ((frame) => props.onFrameChange?.(frame))}
 						extendedMenu = {commonExtendedOptions}
 						resizeEmbed = {resizeEmbed}
 					/>

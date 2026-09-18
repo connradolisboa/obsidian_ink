@@ -1,3 +1,4 @@
+import { WRITING_LINE_HEIGHT } from "src/constants";
 ////////
 ////////
 
@@ -20,6 +21,9 @@ export interface PluginSettings {
 	// Writing specific
 	writingEnabled: boolean,
 	writingStrokeLimit: number,
+	// Ruling height for NEW writing files, in page units. Stored on each file as it's created, so
+	// changing this never re-rules existing writing out from under ink that's already there.
+	writingLineHeight: number,
 	writingDynamicStrokeThickness: boolean,
 	writingSmoothing: boolean,
 	writingStreamline: number,
@@ -65,6 +69,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 	// Writing specific
 	writingEnabled: true,
 	writingStrokeLimit: 200,
+	writingLineHeight: WRITING_LINE_HEIGHT,
 	writingDynamicStrokeThickness: true,
 	writingSmoothing: false,
 	writingStreamline: 0.1,

@@ -9,6 +9,8 @@ type Metadata = {
 	tldrawVersion: string;
 	previewIsOutdated?: boolean;
 	transcript?: string;
+	/** Page-coordinate bounds the preview SVG covers. See src/utils/svg-framing.ts. */
+	previewBounds?: { x: number, y: number, w: number, h: number };
 };
 
 export type InkFileData = {
@@ -36,6 +38,7 @@ export const buildDrawingFileData = (props: {
 	tlEditorSnapshot: TLEditorSnapshot,
 	previewIsOutdated?: boolean;
 	previewUri?: string,
+	previewBounds?: { x: number, y: number, w: number, h: number },
 }): InkFileData => {
 
 	return buildFileData(props);
@@ -47,6 +50,7 @@ const buildFileData = (props: {
 	transcript?: string;
 	previewUri?: string,
 	pagePreviewUris?: string[],
+	previewBounds?: { x: number, y: number, w: number, h: number },
 }): InkFileData => {
 
 	const {
@@ -54,6 +58,7 @@ const buildFileData = (props: {
 		previewUri,
 		previewIsOutdated = false,
 		pagePreviewUris,
+		previewBounds,
 	} = props;
 
 	let pageData: InkFileData = {
@@ -65,6 +70,7 @@ const buildFileData = (props: {
 	}
 
 	if(previewIsOutdated) pageData.meta.previewIsOutdated = previewIsOutdated;
+	if(previewBounds) pageData.meta.previewBounds = previewBounds;
 	if(previewUri) pageData.previewUri = previewUri;
 	if(pagePreviewUris) pageData.pagePreviewUris = pagePreviewUris;
 

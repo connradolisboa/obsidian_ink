@@ -4,6 +4,7 @@ import InkPlugin from "src/main";
 import MyPlugin from "src/main";
 import { ConfirmationModal } from "src/modals/confirmation-modal/confirmation-modal";
 import { DEFAULT_SETTINGS } from 'src/types/plugin-settings';
+import { setNewWritingLineHeight } from 'src/utils/tldraw-helpers';
 import { showWelcomeTips, showWelcomeTips_maybe } from 'src/notices/welcome-notice';
 import { ToggleAccordionSetting } from 'src/components/dom-components/toggle-accordion-setting';
 
@@ -429,6 +430,17 @@ function insertWritingSettings(containerEl: HTMLElement, plugin: InkPlugin, refr
 		refresh();
 	}
 
+	const saveWritingLineHeight = async (enteredValue: string) => {
+		const parsed = parseInt(enteredValue);
+		// Clamped: below ~60 the ruling is too tight to write between, and above ~400 a single line
+		// fills the embed. Neither is a useful place to end up by mistyping.
+		const value = isNaN(parsed) ? DEFAULT_SETTINGS.writingLineHeight : Math.min(400, Math.max(60, parsed));
+		plugin.settings.writingLineHeight = value;
+		setNewWritingLineHeight(value);
+		await plugin.saveSettings();
+		refresh();
+	}
+
 	const saveWritingStreamline = async (enteredValue: string) => {
 		const parsed = parseFloat(enteredValue);
 		const value = isNaN(parsed) ? DEFAULT_SETTINGS.writingStreamline : Math.min(1, Math.max(0, parsed));
@@ -626,6 +638,22 @@ function insertWritingSettings(containerEl: HTMLElement, plugin: InkPlugin, refr
 			})
 			textItem.inputEl.addEventListener('keypress', async (ev: KeyboardEvent) => {
 				if(ev.key === 'Enter') saveWritingStrokeLimit(textItem.getValue())
+			})
+		});
+
+	new Setting(sectionEl)
+		.setClass('inkc_setting')
+		.setName('Line height for new writing')
+		.setDesc(`How far apart the ruled lines sit in newly created writing files, in page units. Lower means denser, smaller handwriting and more lines per page. Default: ${DEFAULT_SETTINGS.writingLineHeight}. This is stored in each file as it's created, so changing it here never re-rules writing you've already done — existing ink would stay put while the lines moved out from under it.`)
+
+		.addText((textItem) => {
+			textItem.setValue(plugin.settings.writingLineHeight.toString());
+			textItem.setPlaceholder(DEFAULT_SETTINGS.writingLineHeight.toString());
+			textItem.inputEl.addEventListener('blur', async (ev: FocusEvent) => {
+				saveWritingLineHeight(textItem.getValue())
+			})
+			textItem.inputEl.addEventListener('keypress', async (ev: KeyboardEvent) => {
+				if(ev.key === 'Enter') saveWritingLineHeight(textItem.getValue())
 			})
 		});
 

@@ -23,6 +23,9 @@ import { CollapseIcon } from "src/graphics/icons/collapse-icon";
 import { ExpandIcon } from "src/graphics/icons/expand-icon";
 import { FullscreenIcon } from "src/graphics/icons/fullscreen-icon";
 import { hasCoarsePointer } from "src/utils/device-classes";
+import { EmbedHeightModal } from "src/modals/embed-height-modal/embed-height-modal";
+import { copyEmbedToClipboard } from "src/utils/embed-clipboard";
+import { WRITE_EMBED_KEY } from "src/constants";
 
 ///////
 ///////
@@ -59,6 +62,7 @@ export function WritingEmbed (props: {
 	save: (pageData: InkFileData) => void,
 	remove: Function,
 	onCollapsedChange?: (collapsed: boolean) => void,
+	onDisplayChange?: (display: { maxHeight: number | undefined, scale: number | undefined }) => void,
 	onTitleChange?: (title: string) => void,
 }) {
 	const embedContainerElRef = useRef<HTMLDivElement>(null);
@@ -120,12 +124,28 @@ export function WritingEmbed (props: {
 			}
 		},
 		{
-			text: 'Open writing',
-			icon: 'maximize',
+			text: 'Copy embed',
+			icon: 'clipboard-copy',
 			section: 'inkc-file',
 			action: async () => {
-				openInkFile(props.plugin, props.writingFileRef)
+				if (!props.embedData) return;
+				// Copies the embed itself, not the file — pasting then asks whether it should point
+				// at the same ink file or a copy of it. See src/utils/embed-clipboard.ts.
+				await copyEmbedToClipboard(WRITE_EMBED_KEY, props.embedData);
 			}
+		},
+		{
+			text: 'Embed display',
+			icon: 'unfold-vertical',
+			section: 'inkc-file',
+			action: () => {
+				new EmbedHeightModal({
+					plugin: props.plugin,
+					currentHeight: props.embedData?.maxHeight,
+					currentScale: props.embedData?.scale,
+					onSubmit: (display) => props.onDisplayChange?.(display),
+				}).open();
+			},
 		},
 		{
 			text: 'Remove embed',
@@ -219,12 +239,16 @@ export function WritingEmbed (props: {
 			{!collapsed && <>
 				{/* Include another container so that it's height isn't affected by the padding of the outer container */}
 				<div
-					className = 'inkc_resize-container'
+					className = {classNames([
+						'inkc_resize-container',
+						props.embedData?.maxHeight && 'inkc_height-capped',
+					])}
 					ref = {resizeContainerElRef}
 				>
 
 					<WritingEmbedPreviewWrapper
 						plugin = {props.plugin}
+						scale = {props.embedData?.scale}
 						onResize = {(height: number) => resizeContainer(height)}
 						writingFile = {props.writingFileRef}
 						onCollapseClick = {() => handleCollapsedChange(true)}
@@ -248,6 +272,13 @@ export function WritingEmbed (props: {
 						embedded
 						saveControlsReference = {registerEditorControls}
 						closeEditor = {saveAndSwitchToPreviewMode}
+						maxHeight = {props.embedData?.maxHeight}
+						scale = {props.embedData?.scale}
+						onOpenClick = {() => openInkFile(
+							props.plugin,
+							props.writingFileRef,
+							props.plugin.settings.closeNoteOnFullscreen ? props.plugin.app.workspace.activeLeaf : null
+						)}
 						extendedMenu = {commonExtendedOptions}
 					/>
 
@@ -266,7 +297,11 @@ export function WritingEmbed (props: {
 
 	function resizeContainer(height: number) {
 		if(!resizeContainerElRef.current) return;
-		resizeContainerElRef.current.style.height = height + 'px';
+		// A capped embed stops growing at its limit and scrolls instead - in preview the container
+		// itself scrolls over the taller SVG, and in the editor the tldraw camera does the moving.
+		const maxHeight = props.embedData?.maxHeight;
+		const appliedHeight = maxHeight ? Math.min(height, maxHeight) : height;
+		resizeContainerElRef.current.style.height = appliedHeight + 'px';
 		setTimeout( () => {
 			// Applies after slight delay so it doesn't affect the first resize
 			if(!resizeContainerElRef.current) return;

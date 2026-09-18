@@ -23,6 +23,8 @@ import * as semver from "semver";
 import { showVersionNotice } from './notices/version-notices';
 import { atom, useSetAtom } from 'jotai';
 import { debug } from './utils/log-to-console';
+import { installEmbedPastePrompt } from './utils/embed-clipboard';
+import { setNewWritingLineHeight } from './utils/tldraw-helpers';
 import { updateInkEmbedLinksInVault } from './utils/embed';
 import { installDeleteNoteWithEmbedsPrompt } from './utils/delete-note-with-embeds';
 import { INK_FILE_EXTS } from './constants';
@@ -92,6 +94,11 @@ export default class InkPlugin extends Plugin {
 		}));
 
 		installDeleteNoteWithEmbedsPrompt(this);
+		installEmbedPastePrompt(this);
+
+		// New writing files get ruled at the configured height. Applied here rather than threaded
+		// through every call site that can lazily create a template shape.
+		setNewWritingLineHeight(this.settings.writingLineHeight);
 
 		// // If the plugin hooks up any global DOM events (on parts of the app that doesn't belong to this plugin)
 		// // Using this function will automatically remove the event listener when this plugin is disabled.

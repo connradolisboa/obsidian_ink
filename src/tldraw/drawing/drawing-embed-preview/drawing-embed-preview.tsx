@@ -2,6 +2,7 @@ import classNames from 'classnames';
 import './drawing-embed-preview.scss';
 import * as React from 'react';
 import SVG from 'react-inlinesvg';
+import { applyFrameToSvg } from 'src/utils/svg-framing';
 import { PrimaryMenuBar } from 'src/tldraw/primary-menu-bar/primary-menu-bar';
 import TransitionMenu from 'src/tldraw/transition-menu/transition-menu';
 import InkPlugin from 'src/main';
@@ -23,6 +24,8 @@ interface DrawingEmbedPreviewProps {
 	onClick: React.MouseEventHandler,
 	onCollapseClick?: () => void,
 	onFullscreenClick?: () => void,
+	/** Crops the preview to this embed's saved framing. See src/utils/svg-framing.ts. */
+	frame?: { x: number, y: number, w: number, h: number },
 }
 
 // Wraps the component so that it can full unmount when inactive
@@ -39,6 +42,8 @@ export const DrawingEmbedPreviewWrapper: React.FC<DrawingEmbedPreviewProps> = (p
 
 export const DrawingEmbedPreview: React.FC<DrawingEmbedPreviewProps> = (props) => {
     const svgRef = React.useRef(null);
+    // The preview's page-coordinate bounds, read from the file alongside the SVG itself.
+    const previewBoundsRef = React.useRef<{ x: number, y: number, w: number, h: number } | undefined>(undefined);
 
     const containerElRef = React.useRef<HTMLDivElement>(null);
     const setEmbedState = useSetAtom(embedStateAtom);
@@ -54,6 +59,13 @@ export const DrawingEmbedPreview: React.FC<DrawingEmbedPreviewProps> = (props) =
 
     // Check if src is a DataURI. If not, it's an SVG
     const isImg = fileSrc.slice(0, 4) === 'data';
+
+    // Cropping is a string rewrite on the preview SVG, so it's memoised rather than redone on
+    // every render — the SVG is the whole drawing and can be sizeable.
+    const framedSrc = React.useMemo(
+        () => (isImg ? fileSrc : applyFrameToSvg(fileSrc, props.frame, previewBoundsRef.current)),
+        [fileSrc, isImg, props.frame?.x, props.frame?.y, props.frame?.w, props.frame?.h],
+    );
 
 	return <>
         <div
@@ -90,7 +102,7 @@ export const DrawingEmbedPreview: React.FC<DrawingEmbedPreviewProps> = (props) =
 
             {!isImg && (
                 <SVG
-                    src = {fileSrc}
+                    src = {framedSrc}
                     style = {{
                         // width: 'auto',
                         // height: '100%',
@@ -150,6 +162,7 @@ export const DrawingEmbedPreview: React.FC<DrawingEmbedPreviewProps> = (props) =
 
     async function fetchFileData() {
         const inkFileData = await getInkFileData(props.plugin, props.drawingFile)
+        previewBoundsRef.current = inkFileData.meta?.previewBounds;
         if (inkFileData.previewUri) setFileSrc(inkFileData.previewUri)
     }
 

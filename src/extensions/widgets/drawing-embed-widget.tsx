@@ -125,6 +125,14 @@ class DrawingEmbedWidget extends MarkdownRenderChild {
 					remove = {this.promptRemove}
 					width = {this.embedData.width}
 					aspectRatio = {this.embedData.aspectRatio}
+					onFrameChange = {(frame: { x: number, y: number, w: number, h: number } | undefined) => {
+						const updatedData = { ...this.embedData, frame };
+						// Clearing has to remove the key, not store `undefined` — this is serialised
+						// straight into the note's codeblock JSON.
+						if (frame === undefined) delete updatedData.frame;
+						this.embedData = updatedData;
+						this.updateEmbed(updatedData);
+					}}
 					onCollapsedChange = {(collapsed: boolean) => {
 						const updatedData = { ...this.embedData, collapsed };
 						this.embedData = updatedData;

@@ -6,7 +6,9 @@ import { WRITING_LINE_HEIGHT, WRITING_MIN_PAGE_HEIGHT, WRITING_PAGE_WIDTH } from
 //////////
 //////////
 
-export type WritingLines = TLBaseShape<'writing-lines', { x: number, y: number, w: number, h: number }>
+// `lineHeight` is optional: files written before it existed simply don't carry one, and fall back
+// to the WRITING_LINE_HEIGHT constant they were ruled with.
+export type WritingLines = TLBaseShape<'writing-lines', { x: number, y: number, w: number, h: number, lineHeight?: number }>
 
 export class WritingLinesUtil extends ShapeUtil<WritingLines> {
 	static override type = 'writing-lines' as const
@@ -17,6 +19,7 @@ export class WritingLinesUtil extends ShapeUtil<WritingLines> {
 			y: 0,
 			w: WRITING_PAGE_WIDTH,
 			h: WRITING_MIN_PAGE_HEIGHT,
+			lineHeight: WRITING_LINE_HEIGHT,
 		}
 	}
 
@@ -74,7 +77,8 @@ export class WritingLinesUtil extends ShapeUtil<WritingLines> {
 	//////////////
 
 	createSvg(shape: WritingLines): React.JSX.Element {
-		const numberOfLines = Math.floor(shape.props.h / WRITING_LINE_HEIGHT);
+		const lineHeight = shape.props.lineHeight || WRITING_LINE_HEIGHT;
+		const numberOfLines = Math.floor(shape.props.h / lineHeight);
 		const margin = 0;
 		this.isAspectRatioLocked(shape);
 
@@ -82,9 +86,9 @@ export class WritingLinesUtil extends ShapeUtil<WritingLines> {
 		<line
 				key = {index}
 				x1 = {margin}
-				y1 = {(index+1) * WRITING_LINE_HEIGHT}
+				y1 = {(index+1) * lineHeight}
 				x2 = {shape.props.w - margin}
-				y2 = {(index+1) * WRITING_LINE_HEIGHT}
+				y2 = {(index+1) * lineHeight}
 				// NOTE: Styling is done through CSS
 			/>
 		));

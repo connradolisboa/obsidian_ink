@@ -13,6 +13,18 @@ export type WritingEmbedData = {
 	transcript?: string;
 	collapsed?: boolean;
 	title?: string;
+	/**
+	 * Caps the embed's rendered height in px, turning it into a scrollable window so a long
+	 * writing takes a small, fixed slot in the note. Undefined means "grow to fit", the original
+	 * behaviour. Per-embed rather than per-file because it describes this view of the writing.
+	 */
+	maxHeight?: number;
+	/**
+	 * Renders the writing smaller within the embed, so more of it fits in the same space.
+	 * 1 (or undefined) is full size. Combines with maxHeight: scaling shows more of the writing
+	 * inside the capped window, rather than cropping more of it away.
+	 */
+	scale?: number;
 };
 
 
@@ -77,6 +89,12 @@ export type DrawingEmbedData = {
 	aspectRatio?: number,
 	collapsed?: boolean,
 	title?: string,
+	/**
+	 * Which part of the drawing this embed shows, in page coordinates. Undefined means "fit the
+	 * whole drawing", the original behaviour. Per-embed so one drawing can appear several times,
+	 * framed differently in each.
+	 */
+	frame?: { x: number, y: number, w: number, h: number },
 };
 
 export const buildDrawingEmbed = (filepath: string) => {

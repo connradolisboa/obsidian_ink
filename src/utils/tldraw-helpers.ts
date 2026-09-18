@@ -118,7 +118,32 @@ export function getActivitySummary(entry: HistoryEntry<TLRecord>) {
 	return summary;
 }
 
-export function preventTldrawCanvasesCausingObsidianGestures(tlEditor: Editor, options?: { stylusOnly?: boolean | (() => boolean); fingerSwipeScroll?: boolean; nativeCameraInFullscreen?: boolean }) {
+export function preventTldrawCanvasesCausingObsidianGestures(tlEditor: Editor, options?: { stylusOnly?: boolean | (() => boolean); fingerSwipeScroll?: boolean; nativeCameraInFullscreen?: boolean; cameraScroll?: { topMarginPx: number } }) {
+
+	// Height-capped embeds scroll their own camera before the note scrolls — the nested-scroll
+	// handoff every scroll container on the web does. Returns true when it consumed the gesture.
+	//
+	// Deliberately all-or-nothing: if the camera can move at all in that direction it takes the
+	// whole delta, rather than splitting it with the note. Splitting reads as the embed and the
+	// page both lurching at once, which is worse than a hard handoff at the boundary.
+	const scrollCameraWithHandoff = (deltaY: number): boolean => {
+		const camScroll = options?.cameraScroll;
+		if (!camScroll) return false;
+
+		const camera = tlEditor.getCamera();
+		const zoom = camera.z || 1;
+		const { yMin, yMax } = getWritingCameraYBounds(tlEditor, camScroll.topMarginPx);
+
+		// deltaY > 0 means scrolling down the page, which moves the camera's y *down* toward yMin.
+		const canMove = deltaY > 0 ? camera.y > yMin : camera.y < yMax;
+		if (!canMove) return false; // at the end — hand off to the note
+
+		const newY = Math.max(yMin, Math.min(yMax, camera.y - deltaY / zoom));
+		silentlyChangeStore(tlEditor, () => {
+			tlEditor.setCamera({ x: camera.x, y: newY, z: camera.z });
+		});
+		return true;
+	};
 	const tlContainer = tlEditor.getContainer();
 
 	const tlCanvas = tlContainer.getElementsByClassName('tl-canvas')[0] as HTMLDivElement;
@@ -227,6 +252,9 @@ export function preventTldrawCanvasesCausingObsidianGestures(tlEditor: Editor, o
 				const deltaY = touchStartY - e.touches[0].clientY;
 				touchStartY = e.touches[0].clientY;
 
+				// Capped embed: scroll its own camera first, handing off at the ends.
+				if (scrollCameraWithHandoff(deltaY)) return;
+
 				// In embed mode, scroll the DOM container
 				const scrollContainer = tlCanvas.closest('.cm-scroller') as HTMLElement;
 				if (scrollContainer) {
@@ -255,6 +283,13 @@ export function preventTldrawCanvasesCausingObsidianGestures(tlEditor: Editor, o
 	tlCanvas.addEventListener('wheel', (e: WheelEvent) => {
 		if (e.ctrlKey) return; // Allow ctrl+scroll (browser zoom) to pass through
 
+		// Capped embed: scroll its own camera first, handing off at the ends.
+		if (scrollCameraWithHandoff(e.deltaY)) {
+			e.preventDefault();
+			e.stopPropagation();
+			return;
+		}
+
 		// In embed mode, scroll the page
 		const scrollContainer = tlCanvas.closest('.cm-scroller') as HTMLElement;
 		if (scrollContainer) {
@@ -280,12 +315,14 @@ export function preventTldrawCanvasesCausingObsidianGestures(tlEditor: Editor, o
 	}, { passive: false });
 }
 
-export function initWritingCamera(editor: Editor, topMarginPx: number = 0) {
+export function initWritingCamera(editor: Editor, topMarginPx: number = 0, scale: number = 1) {
 	let canvasWidth = editor.getContainer().innerWidth
 	let containerMargin = 0;
 	let containerWidth = 2000;
 	let visibleWidth = containerWidth + 2 * containerMargin;
-	const zoom = canvasWidth / visibleWidth;
+	// `scale` shrinks the page within the embed so more lines fit in the same height. Clamped
+	// because a zero or negative zoom silently produces an unrecoverable camera.
+	const zoom = (canvasWidth / visibleWidth) * Math.max(0.1, Math.min(1, scale));
 
 	// REVIEW: These are currently hard coded to a specific page position
 	let x = containerMargin;
@@ -354,14 +391,23 @@ export function initWritingCameraLimits(editor: Editor): WritingCameraLimits {
 	}
 }
 
-export function getWritingCameraYBounds(editor: Editor): { yMin: number; yMax: number } {
+/**
+ * This file's line height, read from its own writing-lines shape. Falls back to the constant for
+ * files written before line height was configurable, which is also what those files were ruled with.
+ */
+export function getWritingLineHeight(editor: Editor): number {
+	return getWritingLinesShape(editor)?.props.lineHeight || WRITING_LINE_HEIGHT;
+}
+
+export function getWritingCameraYBounds(editor: Editor, topMarginPx: number = MENUBAR_HEIGHT_PX): { yMin: number; yMax: number } {
 	const bounds = editor.getCurrentPageBounds();
 	const zoom = editor.getZoomLevel();
 	const viewportH = editor.getViewportScreenBounds().h;
 	const BOTTOM_MARGIN_PX = 50;
 
-	// Upper limit: can't scroll above where the first line is visible (below menubar)
-	const yMax = MENUBAR_HEIGHT_PX;
+	// Upper limit: can't scroll above where the first line is visible (below the menubar in
+	// fullscreen; flush to the top in a height-capped embed, which has no menubar above the page).
+	const yMax = topMarginPx;
 
 	// Lower limit: last line of content must remain on screen
 	const yMinRaw = bounds ? viewportH - BOTTOM_MARGIN_PX - bounds.maxY * zoom : yMax;
@@ -371,8 +417,8 @@ export function getWritingCameraYBounds(editor: Editor): { yMin: number; yMax: n
 	return { yMin, yMax };
 }
 
-export function restrictWritingCamera(editor: Editor, cameraLimits: WritingCameraLimits) {
-	const { yMin, yMax } = getWritingCameraYBounds(editor);
+export function restrictWritingCamera(editor: Editor, cameraLimits: WritingCameraLimits, topMarginPx: number = MENUBAR_HEIGHT_PX) {
+	const { yMin, yMax } = getWritingCameraYBounds(editor, topMarginPx);
 
 	let x = editor.getCamera().x;
 	let y = editor.getCamera().y;
@@ -731,6 +777,16 @@ export function deleteObsoleteWritingTemplateShapes(TLEditorSnapshot: TLEditorSn
 }
 
 
+/**
+ * Line height applied to writing-lines shapes created from here on. Set from the plugin setting at
+ * load, rather than threaded through every call site that can lazily create a template shape.
+ */
+let newWritingLineHeight: number | undefined = undefined;
+
+export function setNewWritingLineHeight(lineHeight: number | undefined) {
+	newWritingLineHeight = lineHeight;
+}
+
 export const updateWritingStoreIfNeeded = (editor: Editor) => {
 	addNewTemplateShapes(editor);
 }
@@ -744,6 +800,9 @@ function addNewTemplateShapes(editor: Editor, pageIndex?: number) {
 		editor.createShape({
 			id: linesId,
 			type: 'writing-lines',
+			// Only set on creation. Changing it on an existing file moves the rules while leaving
+			// the ink where it was, so it is deliberately not applied retroactively here.
+			props: newWritingLineHeight !== undefined ? { lineHeight: newWritingLineHeight } : undefined,
 		})
 	}
 
@@ -894,9 +953,9 @@ export function simplifyWritingLines(editor: Editor, entry: HistoryEntry<TLRecor
  * Convert an existing writing height to a value with just enough space under writing strokes to view baseline.
  * Good for screenshots and other non-interactive states.
  */
-export function cropWritingStrokeHeightTightly(height: number): number {
-	const numFilledLines = Math.ceil(height / WRITING_LINE_HEIGHT);
-	const newLineHeight = (numFilledLines + 0.5) * WRITING_LINE_HEIGHT;
+export function cropWritingStrokeHeightTightly(height: number, lineHeight: number = WRITING_LINE_HEIGHT): number {
+	const numFilledLines = Math.ceil(height / lineHeight);
+	const newLineHeight = (numFilledLines + 0.5) * lineHeight;
 	return Math.max(newLineHeight, WRITING_MIN_PAGE_HEIGHT)
 }
 
@@ -904,9 +963,9 @@ export function cropWritingStrokeHeightTightly(height: number): number {
  * Convert an existing writing height to a value with excess space under writing strokes to to enable further writing.
  * Good for while in editing mode.
  */
-export function cropWritingStrokeHeightInvitingly(height: number): number {
-	const numFilledLines = Math.ceil(height / WRITING_LINE_HEIGHT);
-	const newLineHeight = (numFilledLines + 2 + 0.5) * WRITING_LINE_HEIGHT; // TODO: Convert the 2 to a user definable setting
+export function cropWritingStrokeHeightInvitingly(height: number, lineHeight: number = WRITING_LINE_HEIGHT): number {
+	const numFilledLines = Math.ceil(height / lineHeight);
+	const newLineHeight = (numFilledLines + 2 + 0.5) * lineHeight; // TODO: Convert the 2 to a user definable setting
 	return Math.max(newLineHeight, WRITING_MIN_PAGE_HEIGHT)
 }
 
@@ -921,7 +980,7 @@ export const resizeWritingTemplateInvitingly = (editor: Editor, pageIndex?: numb
 	let contentBounds = getAllStrokeBounds(editor);
 	if (!contentBounds) return;
 
-	contentBounds.h = cropWritingStrokeHeightInvitingly(contentBounds.h);
+	contentBounds.h = cropWritingStrokeHeightInvitingly(contentBounds.h, getWritingLineHeight(editor));
 
 	const writingLinesShape = getWritingLinesShape(editor, pageIndex);
 	const writingContainerShape = getWritingContainerShape(editor, pageIndex);
@@ -969,7 +1028,7 @@ export const removeWritingLine = (editor: Editor, pageIndex?: number) => {
 	if(!writingContainerShape) return;
 
 	const currentHeight = writingContainerShape.props.h;
-	const newHeight = Math.max(currentHeight - WRITING_LINE_HEIGHT, WRITING_MIN_PAGE_HEIGHT);
+	const newHeight = Math.max(currentHeight - getWritingLineHeight(editor), WRITING_MIN_PAGE_HEIGHT);
 
 	silentlyChangeStore( editor, () => {
 		unlockShape(editor, writingContainerShape);
@@ -1002,7 +1061,7 @@ export const addWritingLines = (editor: Editor, lineCount: number = 5, pageIndex
 	if(!writingContainerShape) return;
 
 	const currentHeight = writingContainerShape.props.h;
-	const newHeight = currentHeight + lineCount * WRITING_LINE_HEIGHT;
+	const newHeight = currentHeight + lineCount * getWritingLineHeight(editor);
 
 	silentlyChangeStore( editor, () => {
 		unlockShape(editor, writingContainerShape);
@@ -1035,7 +1094,7 @@ export const resizeWritingTemplateTightly = (editor: Editor, pageIndex?: number)
 	let contentBounds = getAllStrokeBounds(editor);
 	if (!contentBounds) return;
 
-	contentBounds.h = cropWritingStrokeHeightTightly(contentBounds.h);
+	contentBounds.h = cropWritingStrokeHeightTightly(contentBounds.h, getWritingLineHeight(editor));
 
 	const writingLinesShape = getWritingLinesShape(editor, pageIndex);
 	const writingContainerShape = getWritingContainerShape(editor, pageIndex);

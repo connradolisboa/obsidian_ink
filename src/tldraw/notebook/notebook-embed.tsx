@@ -17,6 +17,8 @@ import { CollapseIcon } from "src/graphics/icons/collapse-icon";
 import { ExpandIcon } from "src/graphics/icons/expand-icon";
 import { FullscreenIcon } from "src/graphics/icons/fullscreen-icon";
 import { hasCoarsePointer } from "src/utils/device-classes";
+import { copyEmbedToClipboard } from "src/utils/embed-clipboard";
+import { NOTEBOOK_EMBED_KEY } from "src/constants";
 
 ///////
 ///////
@@ -102,11 +104,14 @@ export function NotebookEmbed (props: {
 			}
 		},
 		{
-			text: 'Open notebook',
-			icon: 'maximize',
+			text: 'Copy embed',
+			icon: 'clipboard-copy',
 			section: 'inkc-file',
 			action: async () => {
-				openInkFile(props.plugin, props.notebookFileRef)
+				if (!props.embedData) return;
+				// Copies the embed itself, not the file — pasting then asks whether it should point
+				// at the same ink file or a copy of it. See src/utils/embed-clipboard.ts.
+				await copyEmbedToClipboard(NOTEBOOK_EMBED_KEY, props.embedData);
 			}
 		},
 		{
@@ -229,6 +234,11 @@ export function NotebookEmbed (props: {
 						initialPage = {currentPage}
 						saveControlsReference = {registerEditorControls}
 						closeEditor = {saveAndSwitchToPreviewMode}
+						onOpenClick = {() => openInkFile(
+							props.plugin,
+							props.notebookFileRef,
+							props.plugin.settings.closeNoteOnFullscreen ? props.plugin.app.workspace.activeLeaf : null
+						)}
 						extendedMenu = {commonExtendedOptions}
 						onPageChange = {handlePageChange}
 					/>

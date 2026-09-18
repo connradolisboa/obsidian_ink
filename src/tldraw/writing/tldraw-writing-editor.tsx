@@ -1,7 +1,7 @@
 import './tldraw-writing-editor.scss';
 import { Box, DefaultDashStyle, DrawShapeUtil, Editor, HistoryEntry, StoreSnapshot, TLDrawShape, TLStoreSnapshot, TLRecord, TLShapeId, TLStore, TLUiOverrides, TLUnknownShape, Tldraw, getSnapshot, TLSerializedStore, TldrawOptions, TldrawEditor, defaultTools, defaultShapeTools, defaultShapeUtils, defaultBindingUtils, TldrawScribble, TldrawShapeIndicators, TldrawSelectionForeground, TldrawSelectionBackground, TldrawHandles, TLEditorSnapshot } from "@tldraw/tldraw";
 import { useRef } from "react";
-import { Activity, WritingCameraLimits, adaptTldrawToObsidianThemeMode, deleteObsoleteWritingTemplateShapes, fitWritingCameraToWidth, focusChildTldrawEditor, getActivityType, getWritingCameraYBounds, getWritingContainerBounds, getWritingContainerShape, getWritingSvg, hideWritingContainer, hideWritingLines, hideWritingTemplate, initWritingCamera, initWritingCameraLimits, lockShape, prepareWritingSnapshot, preventTldrawCanvasesCausingObsidianGestures, resizeWritingTemplateInvitingly, addWritingLines, removeWritingLine, restrictWritingCamera, silentlyChangeStore, unhideWritingContainer, unhideWritingLines, unhideWritingTemplate, unlockShape, updateWritingStoreIfNeeded, useStash } from "../../utils/tldraw-helpers";
+import { Activity, WritingCameraLimits, adaptTldrawToObsidianThemeMode, deleteObsoleteWritingTemplateShapes, fitWritingCameraToWidth, focusChildTldrawEditor, getActivityType, getWritingCameraYBounds, getWritingLineHeight, getWritingContainerBounds, getWritingContainerShape, getWritingSvg, hideWritingContainer, hideWritingLines, hideWritingTemplate, initWritingCamera, initWritingCameraLimits, lockShape, prepareWritingSnapshot, preventTldrawCanvasesCausingObsidianGestures, resizeWritingTemplateInvitingly, addWritingLines, removeWritingLine, restrictWritingCamera, silentlyChangeStore, unhideWritingContainer, unhideWritingLines, unhideWritingTemplate, unlockShape, updateWritingStoreIfNeeded, useStash } from "../../utils/tldraw-helpers";
 import { WritingContainer, WritingContainerUtil } from "../writing-shapes/writing-container"
 import { WritingMenu } from "../writing-menu/writing-menu";
 import InkPlugin from "../../main";
@@ -36,6 +36,12 @@ interface TldrawWritingEditorProps {
 	writingFile: TFile,
 	save: (inkFileData: InkFileData) => void,
 	extendedMenu?: any[],
+	onOpenClick?: () => void,
+	// When set, the embed is height-capped: the camera scrolls inside a fixed-height window
+	// instead of the container growing to fit the whole writing. See WritingEmbedData.maxHeight.
+	maxHeight?: number,
+	// Renders the writing smaller inside the embed. See WritingEmbedData.scale.
+	scale?: number,
 
 	// For embeds
 	embedded?: boolean,
@@ -133,7 +139,13 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 		const ereader = isEreader();
 		const fingerSwipeScroll = props.plugin.settings.fingerSwipeScroll;
 		// Pass a getter so the event listeners can check the live value when toggled at runtime
-		preventTldrawCanvasesCausingObsidianGestures(editor, { stylusOnly: () => stylusOnlyRef.current, fingerSwipeScroll });
+		// A capped embed owns its vertical scrolling, so finger/wheel gestures move its camera
+		// first and only fall through to the note once it has nothing left to scroll.
+		preventTldrawCanvasesCausingObsidianGestures(editor, {
+			stylusOnly: () => stylusOnlyRef.current,
+			fingerSwipeScroll,
+			cameraScroll: (props.embedded && props.maxHeight) ? { topMarginPx: 0 } : undefined,
+		});
 
 		setEreaderStreamline(props.plugin.settings.writingStreamline);
 
@@ -162,13 +174,18 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 		resizeContainerIfEmbed(editor);	// Has an effect if the embed is new and started at 0
 
 		// view set up
-		if(props.embedded) {
-			initWritingCamera(editor);
+		//
+		// A grow-to-fit embed locks its camera and lets the container grow instead. A capped embed
+		// can't do that - the whole point is that the container stays put - so it takes the
+		// fullscreen treatment (unlocked, bounded) with no menubar margin above the page.
+		const cappedEmbedCamera = !!props.embedded && !!props.maxHeight;
+		if(props.embedded && !cappedEmbedCamera) {
+			initWritingCamera(editor, 0, props.scale);
 			editor.setCameraOptions({
 				isLocked: true,
 			})
 		} else {
-			initWritingCamera(editor, MENUBAR_HEIGHT_PX);
+			initWritingCamera(editor, props.embedded ? 0 : MENUBAR_HEIGHT_PX, props.scale);
 			cameraLimitsRef.current = initWritingCameraLimits(editor);
 		}
 
@@ -179,11 +196,11 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 
 		// Re-init camera after layout settles to ensure correct dimensions
 		requestAnimationFrame(() => {
-			if(props.embedded) {
-				initWritingCamera(editor);
+			if(props.embedded && !cappedEmbedCamera) {
+				initWritingCamera(editor, 0, props.scale);
 				editor.setCameraOptions({ isLocked: true });
 			} else {
-				initWritingCamera(editor, MENUBAR_HEIGHT_PX);
+				initWritingCamera(editor, props.embedded ? 0 : MENUBAR_HEIGHT_PX, props.scale);
 				cameraLimitsRef.current = initWritingCameraLimits(editor);
 			}
 
@@ -208,7 +225,7 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 
 				case Activity.CameraMovedAutomatically:
 				case Activity.CameraMovedManually:
-					if(cameraLimitsRef.current) restrictWritingCamera(editor, cameraLimitsRef.current);
+					if(cameraLimitsRef.current) restrictWritingCamera(editor, cameraLimitsRef.current, props.embedded ? 0 : MENUBAR_HEIGHT_PX);
 					unstashStaleContent(editor);
 					bridgeClientRef.current?.updateRect(getBridgeRect(editor), getBridgeStyle(), screenOriginRef.current);
 					break;
@@ -266,7 +283,7 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 				return;
 			}
 			const cam = editor.getCamera();
-			const { yMin: kbYMin, yMax: kbYMax } = getWritingCameraYBounds(editor);
+			const { yMin: kbYMin, yMax: kbYMax } = getWritingCameraYBounds(editor, props.embedded ? 0 : MENUBAR_HEIGHT_PX);
 			const newY = Math.max(kbYMin, Math.min(kbYMax, cam.y - delta));
 			silentlyChangeStore(editor, () => {
 				editor.setCamera({ x: cam.x, y: newY, z: cam.z });
@@ -371,12 +388,17 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 
 		if (contentBounds) {
 			const contentRatio = contentBounds.w / contentBounds.h;
-			const newEmbedHeight = embedBounds.w / contentRatio;
+			// Scaling down shrinks the space the writing needs, which is the point of it.
+			const scale = Math.max(0.1, Math.min(1, props.scale ?? 1));
+			const newEmbedHeight = (embedBounds.w / contentRatio) * scale;
 			props.onResize(newEmbedHeight);
 
 			// Re-init camera after container resize to prevent coordinate distortion
 			requestAnimationFrame(() => {
-				initWritingCamera(editor);
+				// A capped embed keeps its camera unlocked and its scroll position - re-locking here
+				// would silently strand the user at the top the first time the writing grew.
+				if (props.embedded && props.maxHeight) return;
+				initWritingCamera(editor, 0, props.scale);
 				editor.setCameraOptions({ isLocked: true });
 			});
 		}
@@ -420,7 +442,7 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 				? containerShape.y + containerShape.props.h
 				: 0;
 			const needsResize = !containerShape
-				|| lastContentMaxYRef.current + WRITING_LINE_HEIGHT > containerBottom;
+				|| lastContentMaxYRef.current + getWritingLineHeight(editor) > containerBottom;
 			if (needsResize) {
 				resizeWritingTemplateInvitingly(editor);
 				resizeContainerIfEmbed(editor);
@@ -626,6 +648,7 @@ export function TldrawWritingEditor(props: TldrawWritingEditorProps) {
 							// REVIEW: Save immediately? incase it hasn't been saved yet
 							if(props.closeEditor) props.closeEditor();
 						}}
+						onOpenClick = {props.onOpenClick}
 						menuOptions = {props.extendedMenu}
 					/>
 				)}

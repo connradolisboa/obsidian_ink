@@ -140,3 +140,14 @@
     max-width: 100% !important;
 }
 
+
+// A height-capped embed scrolls its own content instead of growing the note.
+// In preview the container scrolls over the taller SVG; in the editor the tldraw
+// camera does the scrolling, so overflow only needs to be contained there.
+.inkc_resize-container.inkc_height-capped {
+    overflow-y: auto;
+    overflow-x: hidden;
+    // Keeps a nested scroll from chaining up to the note mid-gesture — the handoff is decided
+    // explicitly in preventTldrawCanvasesCausingObsidianGestures, not by the browser.
+    overscroll-behavior-y: contain;
+}

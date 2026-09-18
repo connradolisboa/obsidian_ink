@@ -88,6 +88,17 @@ class WritingEmbedWidget extends MarkdownRenderChild {
 						this.embedData = updatedData;
 						this.embedCtrls.updateEmbedData(updatedData);
 					}}
+					onDisplayChange = {(display: { maxHeight: number | undefined, scale: number | undefined }) => {
+						const updatedData = { ...this.embedData, maxHeight: display.maxHeight, scale: display.scale };
+						// Dropping a value has to remove the key, not write `undefined` - it's
+						// serialised straight into the note's codeblock JSON.
+						if (display.maxHeight === undefined) delete updatedData.maxHeight;
+						if (display.scale === undefined) delete updatedData.scale;
+						this.embedData = updatedData;
+						this.embedCtrls.updateEmbedData(updatedData);
+						// No manual re-render: updateEmbedData rewrites the codeblock, and CodeMirror
+						// rebuilds the widget from that - same path the collapsed toggle relies on.
+					}}
 					onTitleChange = {(title: string) => {
 						this.renameWritingFile(title);
 					}}
