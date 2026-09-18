@@ -23,10 +23,16 @@ data class WritingModeState(
     // "Coordinate calibration" in /COMPANION_APP_RESEARCH.md. {0,0} until the plugin calibrates.
     val screenOriginX: Double,
     val screenOriginY: Double,
+    // The WebView's own physical->CSS px ratio. 0.0 when the plugin didn't send one (older build
+    // or the mock server), in which case the caller falls back to displayMetrics.density.
+    val devicePixelRatio: Double,
 )
 
 interface BridgeServerListener {
     fun onWritingModeChanged(state: WritingModeState)
+
+    /** Server-level failure — most importantly a port already held by another install. */
+    fun onBridgeServerError(message: String)
 }
 
 /**
@@ -66,6 +72,7 @@ class BridgeServer(port: Int, private val listener: BridgeServerListener) :
                     rectHeight = rect.getDouble("height"),
                     screenOriginX = origin?.optDouble("x", 0.0) ?: 0.0,
                     screenOriginY = origin?.optDouble("y", 0.0) ?: 0.0,
+                    devicePixelRatio = json.optDouble("devicePixelRatio", 0.0),
                 )
             )
         } catch (e: Exception) {
@@ -75,6 +82,11 @@ class BridgeServer(port: Int, private val listener: BridgeServerListener) :
 
     override fun onError(conn: WebSocket?, ex: Exception) {
         Log.w(TAG, "Bridge server error", ex)
+        // A null conn means the failure is the server's own, not one client's — a bind failure
+        // lands here, and silently ignoring it is what made the port collision so hard to spot.
+        if (conn == null) {
+            listener.onBridgeServerError(ex.message ?: ex.javaClass.simpleName)
+        }
     }
 
     override fun onStart() {

@@ -38,6 +38,11 @@ android {
         }
     }
 
+    buildFeatures {
+        // Needed for BuildConfig.BRIDGE_PORT below (AGP 8 no longer generates BuildConfig by default).
+        buildConfig = true
+    }
+
     buildTypes {
         debug {
             // Installs alongside the stable release build instead of replacing it — Android
@@ -47,9 +52,33 @@ android {
             // untouched. See /COMPANION_APP_RESEARCH.md in the parent repo.
             applicationIdSuffix = ".dev"
             resValue("string", "app_name", "Boox Rapid Draw (Dev)")
+            resValue("string", "tile_label", "Rapid Draw (Dev)")
+            // Its own port, so the dev and stable installs can never fight over one socket.
+            // Whichever service bound first used to win silently — WebSocketServer reports a
+            // failed bind through onError, which only logged — so the plugin could be talking to
+            // the *other* app's build while you tested this one. See /COMPANION_APP_RESEARCH.md.
+            // Set "Companion bridge port" to 8766 in the plugin when testing this build.
+            buildConfigField("int", "BRIDGE_PORT", "8766")
         }
+        // The definitive, daily-driver install: base applicationId, port 8765, plain "Rapid Draw".
+        // Build and install it with:
+        //   ./gradlew :app:assembleRelease && adb install -r app/build/outputs/apk/release/app-release.apk
         release {
-            isMinifyEnabled = true
+            resValue("string", "tile_label", "Rapid Draw")
+            buildConfigField("int", "BRIDGE_PORT", "8765")
+
+            // Signed with the debug keystore because this is a personal sideloaded app with no
+            // release keystore — and because it has to install *over* the existing debug-signed
+            // install without uninstalling it first. Not suitable for public distribution as-is.
+            signingConfig = signingConfigs.getByName("debug")
+
+            // Minification stays OFF. The release variant has never been built, let alone run, and
+            // this app is a minefield for it: the Onyx SDK is reflection-heavy, Java-WebSocket
+            // resolves handlers reflectively, and HiddenApiBypass exists precisely to defeat static
+            // analysis. Shipping an untested R8 config as the daily driver trades a working app for
+            // a smaller one. Revisit with `-dontobfuscate` and real on-device testing if size ever
+            // matters.
+            isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

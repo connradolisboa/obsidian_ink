@@ -12,6 +12,9 @@ import android.graphics.Paint
 import android.graphics.PixelFormat
 import android.graphics.Rect
 import android.graphics.RectF
+import android.os.Handler
+import android.util.Log
+import android.os.Looper
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.SurfaceView
@@ -31,10 +34,10 @@ import com.onyx.android.sdk.pen.TouchHelper
 import com.onyx.android.sdk.pen.data.TouchPointList
 import com.sergeylappo.booxrapiddraw.utils.BridgePrefs
 
+private const val TAG = "RapidDrawOverlay"
+
 private const val CHANNEL_ID = "rapid_draw_channel_overlay_01"
 private const val STROKE_WIDTH = 3.0f
-
-private const val BRIDGE_PORT = 8765
 
 class OverlayShowingService : Service(), BridgeServerListener {
     private val paint = Paint()
@@ -62,7 +65,7 @@ class OverlayShowingService : Service(), BridgeServerListener {
         initPaint()
         initSurfaceView()
 
-        bridgeServer = BridgeServer(BRIDGE_PORT, this).also { it.start() }
+        bridgeServer = BridgeServer(BuildConfig.BRIDGE_PORT, this).also { it.start() }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -206,6 +209,15 @@ class OverlayShowingService : Service(), BridgeServerListener {
     //////// Obsidian-plugin companion bridge. See /COMPANION_APP_RESEARCH.md in the parent repo.
     ////////
 
+    // A failed port bind used to be invisible — WebSocketServer reports it through onError, which
+    // only logged, leaving the service running with a dead server while the plugin happily talked
+    // to whichever *other* install had grabbed the port. Surface it instead.
+    override fun onBridgeServerError(message: String) {
+        Handler(Looper.getMainLooper()).post {
+            Toast.makeText(this, "Rapid Draw bridge: $message", Toast.LENGTH_LONG).show()
+        }
+    }
+
     override fun onWritingModeChanged(state: WritingModeState) {
         writingMode = if (state.active) state else null
         applyCaptureState()
@@ -224,14 +236,18 @@ class OverlayShowingService : Service(), BridgeServerListener {
     // install. See /COMPANION_APP_RESEARCH.md for the two prior attempts at this.
     private fun applyCaptureState() {
         if (!::touchHelper.isInitialized) return
-        val density = resources.displayMetrics.density.toDouble()
         val mode = writingMode
 
         if (mode != null) {
-            val left = ((mode.screenOriginX + mode.rectLeft) * density).toInt()
-            val top = ((mode.screenOriginY + mode.rectTop) * density).toInt()
-            val right = left + (mode.rectWidth * density).toInt()
-            val bottom = top + (mode.rectHeight * density).toInt()
+            val scale = cssScale(mode)
+            val origin = viewOrigin()
+            // setLimitRect takes view-local coordinates — the original code passed it
+            // `getLocalVisibleRect` output — so subtract the view's own screen position here,
+            // exactly mirroring the addition on the outgoing-point path.
+            val left = ((mode.screenOriginX + mode.rectLeft) * scale).toInt() - origin[0]
+            val top = ((mode.screenOriginY + mode.rectTop) * scale).toInt() - origin[1]
+            val right = left + (mode.rectWidth * scale).toInt()
+            val bottom = top + (mode.rectHeight * scale).toInt()
             touchHelper.setLimitRect(Rect(left, top, right, bottom), listOf())
             setRawCaptureEnabled(true)
         } else {
@@ -254,12 +270,49 @@ class OverlayShowingService : Service(), BridgeServerListener {
         touchHelper.setRawInputReaderEnable(enabled)
     }
 
+    // Scratch buffer for getLocationOnScreen — the overlay's own top-left in physical screen px.
+    private val viewOriginOnScreen = IntArray(2)
+
+    // Onyx raw TouchPoints are host-view-local (OpenInkBridge tags its own as
+    // HOST_VIEW_LOCAL_PHYSICAL_PIXELS), while `screenOrigin` from the plugin is screen-absolute.
+    // The earlier code bridged the two by assuming the overlay window's top-left *is* the screen's
+    // top-left. That holds only while nothing (status bar, cutout, insets) pushes the window down,
+    // and it silently shifts every stroke by the difference when it doesn't. Ask the view where it
+    // actually is instead — this is a no-op at (0,0), and correct when it isn't.
+    private fun viewOrigin(): IntArray {
+        overlayPaintingView.getLocationOnScreen(viewOriginOnScreen)
+        return viewOriginOnScreen
+    }
+
+    // Physical px per CSS px. The plugin's devicePixelRatio is authoritative when present, since
+    // clientX/clientY — the units tldraw actually consumes — are defined against it, and it already
+    // accounts for Obsidian's page zoom. displayMetrics.density is the pre-existing fallback.
+    private fun cssScale(mode: WritingModeState): Double {
+        val dpr = mode.devicePixelRatio
+        return if (dpr > 0.0) dpr else resources.displayMetrics.density.toDouble()
+    }
+
     private fun forwardPointToBridge(touchPoint: TouchPoint?, phase: String) {
         val mode = writingMode ?: return
         val point = touchPoint ?: return
-        val density = resources.displayMetrics.density.toDouble()
-        val cssX = point.x.toDouble() / density - mode.screenOriginX
-        val cssY = point.y.toDouble() / density - mode.screenOriginY
+        val scale = cssScale(mode)
+        val origin = viewOrigin()
+        val cssX = (point.x.toDouble() + origin[0]) / scale - mode.screenOriginX
+        val cssY = (point.y.toDouble() + origin[1]) / scale - mode.screenOriginY
+
+        if (phase == "down") {
+            // One line per stroke, not per point — enough to solve a coordinate mismatch offline
+            // (`adb logcat -s RapidDrawOverlay`) without flooding the log while writing.
+            Log.i(
+                TAG,
+                "pen down raw=(${point.x},${point.y}) viewOrigin=(${origin[0]},${origin[1]}) " +
+                    "dpr=${mode.devicePixelRatio} density=${resources.displayMetrics.density} scale=$scale " +
+                    "screenOrigin=(${mode.screenOriginX},${mode.screenOriginY}) " +
+                    "rect=(${mode.rectLeft},${mode.rectTop},${mode.rectWidth},${mode.rectHeight}) " +
+                    "-> css=($cssX,$cssY)"
+            )
+        }
+
         bridgeServer?.sendStrokePoint(
             sessionId = mode.sessionId,
             canvasId = mode.canvasId,
@@ -270,6 +323,7 @@ class OverlayShowingService : Service(), BridgeServerListener {
             t = point.timestamp.toLong(),
         )
     }
+
 
     ////////
 
